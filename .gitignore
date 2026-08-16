@@ -1,0 +1,8 @@
+# Local compiler output
+/src/n148i
+/src/n148i.exe
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+*.swp
