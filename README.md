@@ -17,30 +17,72 @@ The project is split into two planned formats:
 | **N.148i** | Static images such as photographs, illustrations, and screenshots | `.n148i` |
 | **N.148v** | Video streams and moving images | To be defined |
 
-The current milestone introduces **N.148i** and its first real on-disk artifact: a portable 16-byte image header. It does not contain compressed pixels yet; it establishes the binary contract that future encoder and decoder stages will use.
+The current N.148i milestone loads a real image into memory, reads its interleaved RGB pixels, converts them to YCbCr, and exports the three channels for visual inspection. This prepares the image data for the block-based compression pipeline that follows.
 
 ---
 
-## Current milestone
+## Current milestone: PPM input and YCbCr channels
 
-The program in `src/main.c` creates an example N.148i header, writes it to `output/image.n148i`, opens the file again, validates its signature, and prints the decoded fields.
+The program in `src/main.c` reads the bundled binary PPM image at `images/example.ppm`. It validates the P6 header, supports flexible whitespace and comment lines, loads all RGB24 pixel data, and applies the JPEG/ITU-R BT.601 conversion to produce separate Y, Cb, and Cr planes.
 
 This milestone demonstrates:
 
-- binary file creation and reading in C;
-- a five-byte magic signature used to identify the format;
-- explicit little-endian serialization for cross-platform consistency;
-- image dimensions stored as 32-bit unsigned integers;
-- quality and chroma-subsampling metadata;
-- a complete write/read round trip against a real `.n148i` file.
+- parsing a hybrid file format with a text header and binary pixel payload;
+- validating the P6 magic number, dimensions, and maximum channel value;
+- handling legal PPM whitespace and `#` header comments;
+- loading interleaved 24-bit RGB pixels into dynamically allocated memory;
+- converting RGB into luminance and chrominance channels;
+- saving individual channels as binary PGM images;
+- releasing all allocated memory after processing.
 
-The generated file under `output/` is intentionally tracked as a small reference artifact, making the exact format bytes easy to inspect and compare.
+The generated channel files under `output/` are intentionally versionable reference artifacts. They make the color-space transformation visible and easy to verify.
 
 ---
 
-## N.148i header format
+## Why PPM?
 
-Every N.148i file starts with the following 16-byte header:
+Most familiar image formats are compressed. Loading JPEG, PNG, WebP, or HEIC directly would first require implementing or integrating a complete decoder. PPM provides a deliberately simple starting point: its P6 variant stores a short text header followed immediately by raw RGB bytes.
+
+A binary PPM begins like this:
+
+```text
+P6
+320 240
+255
+[R, G, B, R, G, B, ...]
+```
+
+| Header value | Meaning |
+| --- | --- |
+| `P6` | Binary Portable Pixmap signature |
+| `320 240` | Image width and height |
+| `255` | Maximum channel value; each RGB channel occupies one byte |
+
+N.148 uses P6 rather than the text-based P3 variant because the pixel payload is smaller, faster to read, and already matches the RGB24 representation used by the codec.
+
+---
+
+## RGB to YCbCr
+
+Each RGB pixel is transformed into one luminance channel and two color-difference channels:
+
+```text
+Y  =  0.299000R + 0.587000G + 0.114000B
+Cb = -0.168736R - 0.331264G + 0.500000B + 128
+Cr =  0.500000R - 0.418688G - 0.081312B + 128
+```
+
+- **Y** carries brightness and most of the visually important structure.
+- **Cb** describes the blue color difference.
+- **Cr** describes the red color difference.
+
+Each output value is rounded and clamped to the `0–255` byte range. The resulting planes are written as P5 PGM files so standard image tools can display them as grayscale images.
+
+---
+
+## N.148i header foundation
+
+The previous milestone established the portable 16-byte header that will prefix every `.n148i` file:
 
 | Offset | Size | Field | Example | Description |
 | ---: | ---: | --- | --- | --- |
@@ -51,13 +93,7 @@ Every N.148i file starts with the following 16-byte header:
 | `14` | 1 byte | Quality | `50` | Compression-quality setting |
 | `15` | 1 byte | Chroma | `2` | Chroma mode: `0` = 4:4:4, `1` = 4:2:2, `2` = 4:2:0 |
 
-For the bundled 640 × 480 example, the complete header is:
-
-```text
-4e 31 34 38 49 01 80 02 00 00 e0 01 00 00 32 02
-```
-
-The width and height are serialized one byte at a time rather than by writing the C structure directly. This avoids compiler padding and host-endianness differences, keeping the file representation stable across Linux, macOS, and Windows.
+The reference `output/image.n148i` remains in the repository. Future milestones will append the compressed image payload after this header.
 
 ---
 
@@ -66,13 +102,17 @@ The width and height are serialized one byte at a time rather than by writing th
 ```text
 n148/
 ├── src/
-│   ├── main.c          # Current header writer and reader
-│   ├── header.c        # Reserved for the extracted implementation
-│   └── header.h        # Reserved for the public header API
+│   ├── main.c              # PPM reader and RGB-to-YCbCr conversion
+│   ├── header.c            # Reserved for extracted header logic
+│   └── header.h            # Reserved for the public header API
 ├── images/
-│   └── entry.ppm       # Small input image for upcoming codec stages
+│   └── example.ppm         # 320 × 240 fictional binary P6 fixture
 ├── output/
-│   └── image.n148i     # Generated 16-byte reference file
+│   ├── image.n148i         # 16-byte header from the previous milestone
+│   ├── channel_y.pgm       # Generated luminance plane
+│   ├── channel_cb.pgm      # Generated blue-difference plane
+│   └── channel_cr.pgm      # Generated red-difference plane
+├── .gitattributes          # Binary media and codec artifact rules
 ├── LICENSE
 └── README.md
 ```
@@ -85,6 +125,7 @@ n148/
 
 - A C compiler with C11 support, such as GCC or Clang
 - A terminal or command prompt
+- No third-party C libraries
 
 From the repository root, enter the source directory, compile the program, and run it:
 
@@ -96,24 +137,64 @@ gcc -std=c11 -Wall -Wextra -Wpedantic main.c -o n148i
 
 On Windows with GCC, the executable may be named `n148i.exe`. From PowerShell, run it with `./n148i.exe`.
 
-Expected output:
+With the bundled example, the output begins as follows:
 
 ```text
-File '../output/image.n148i' saved successfully!
+=== PPM loaded successfully ===
+Size:        320 x 240 pixels
+Pixels:      76800
+Pixel data:  230400 bytes (225.0 KB)
 
---- Header read from file ---
-Signature: N148I
-Version:   1
-Size:      640 x 480 pixels
-Quality:   50
-Chroma:    4:2:0
+First 3 pixels (RGB):
+  pixel 0: R=255 G=  0 B=  0
+  pixel 1: R=255 G=  0 B=  0
+  pixel 2: R=255 G=  0 B=  0
+
+Same 3 pixels after RGB -> YCbCr:
+  pixel 0: Y= 76 Cb= 85 Cr=255
+  pixel 1: Y= 76 Cb= 85 Cr=255
+  pixel 2: Y= 76 Cb= 85 Cr=255
 ```
 
-Inspect the generated bytes on Linux or macOS:
+The program then writes `channel_y.pgm`, `channel_cb.pgm`, and `channel_cr.pgm` under `output/`.
+
+---
+
+## Using your own image
+
+Convert a JPEG, PNG, WebP, or another supported image to a binary PPM named `example.ppm`. With ImageMagick:
 
 ```bash
-od -A d -t x1 ../output/image.n148i
+magick photo.jpg -resize 320x240 images/example.ppm
 ```
+
+Older ImageMagick installations may expose the command as `convert`. FFmpeg is another option:
+
+```bash
+ffmpeg -i photo.png images/example.ppm
+```
+
+Confirm that the file starts with `P6`; a `P3` image stores pixels as text and is intentionally rejected by this reader.
+
+---
+
+## Validation
+
+Compile with strict warnings:
+
+```bash
+gcc -std=c11 -Wall -Wextra -Wpedantic -Werror src/main.c -o /tmp/n148i
+```
+
+For memory and undefined-behavior checks on GCC or Clang:
+
+```bash
+gcc -std=c11 -Wall -Wextra -Wpedantic -Werror \
+  -fsanitize=address,undefined -fno-omit-frame-pointer \
+  src/main.c -o /tmp/n148i-sanitized
+```
+
+Run the executable from `src/` because the lesson intentionally uses paths relative to that directory.
 
 ---
 
@@ -121,12 +202,11 @@ od -A d -t x1 ../output/image.n148i
 
 N.148 is being developed incrementally. Upcoming N.148i stages will:
 
-1. load a PPM image and convert its pixels into Y, Cb, and Cr channels;
-2. divide the image into 8 × 8 blocks;
-3. apply DCT and quantization;
-4. serialize coefficients through zig-zag ordering, RLE, and Huffman coding;
-5. append the compressed payload after the file header;
-6. implement the reverse path in a decoder and reconstruct the image.
+1. divide the Y, Cb, and Cr planes into 8 × 8 blocks, including edge handling;
+2. apply DCT and quantization to every block;
+3. serialize coefficients through zig-zag ordering, RLE, and Huffman coding;
+4. append the compressed payload after the N.148i file header;
+5. implement the reverse path in a decoder and reconstruct the image.
 
 The longer-term goal is to carry the same first-principles approach into **N.148v**, the video-oriented member of the format family.
 
@@ -136,17 +216,13 @@ The longer-term goal is to carry the same first-principles approach into **N.148
 
 The repository is designed to be read together with the lessons published at [micilini.com/conteudos/codecs](https://micilini.com/conteudos/codecs). The articles explain the reasoning behind every stage, while the Git history records the implementation as it evolves milestone by milestone.
 
-If you are new to codecs or to binary file handling in C, start with the series and follow the repository changes in order.
+If you are new to codecs or binary file handling in C, start with the series and follow the repository changes in order.
 
 ---
 
 ## Contributing
 
-Issues and pull requests are welcome as the format develops. Keep changes focused, preserve the explicit binary layout, and compile with warnings enabled before submitting code:
-
-```bash
-gcc -std=c11 -Wall -Wextra -Wpedantic src/main.c -o /tmp/n148i
-```
+Issues and pull requests are welcome as the format develops. Keep changes focused, preserve the explicit binary layouts, and compile with warnings enabled before submitting code.
 
 ---
 
