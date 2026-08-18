@@ -1,122 +1,220 @@
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-// The signature (magic number) of our format.
-#define N148I_MAGIC "N148I"
-#define N148I_MAGIC_LEN 5
+// ============================================================
+// DATA STRUCTURES
+// ============================================================
 
-// The "box label": everything the decoder needs to know.
 typedef struct {
-    char magic[6]; // "N148I" + '\0' terminator
-    uint8_t version;
-    uint32_t width;
-    uint32_t height;
-    uint8_t quality;
-    uint8_t chroma; // 0 = 4:4:4, 1 = 4:2:2, 2 = 4:2:0
-} N148iHeader;
+    int width;
+    int height;
+    unsigned char *pixels; // RGB interleaved: R,G,B,R,G,B...
+} Image;
+
+typedef struct {
+    int width;
+    int height;
+    unsigned char *y;  // Luminance.
+    unsigned char *cb; // Blue-difference chroma.
+    unsigned char *cr; // Red-difference chroma.
+} YCbCrImage;
 
 // ============================================================
-// WRITING NUMBERS (byte by byte, little-endian)
+// PPM HEADER PARSING HELPERS
 // ============================================================
 //
-// We write each byte by hand to guarantee the same order on
-// any computer. Never dump the struct straight into the file!
+// The PPM header is plain text, and the format allows any amount
+// of whitespace between the numbers, plus '#' comment lines.
+// This helper eats all of that so we land exactly on the next
+// real piece of content.
 
-void write_u8(FILE *file, uint8_t value) {
-    fputc(value, file);
+static void skip_whitespace_and_comments(FILE *file) {
+    int character;
+
+    for (;;) {
+        character = fgetc(file);
+        if (character == '#') {
+            // Comment: skip the whole line.
+            while (character != '\n' && character != EOF) {
+                character = fgetc(file);
+            }
+        } else if (character == ' ' || character == '\t' ||
+                   character == '\n' || character == '\r') {
+            continue; // Whitespace: keep going.
+        } else {
+            ungetc(character, file); // Real content: put it back.
+            return;
+        }
+    }
 }
 
-void write_u32(FILE *file, uint32_t value) {
-    fputc((value) & 0xFF, file);       // Least significant byte first.
-    fputc((value >> 8) & 0xFF, file);
-    fputc((value >> 16) & 0xFF, file);
-    fputc((value >> 24) & 0xFF, file); // Most significant byte last.
-}
+// Reads one decimal number from the header.
+// NOTE: this also consumes the single character that ends the
+// number (usually a newline), which is exactly the separator the
+// format expects before the pixel data starts.
+static int read_number(FILE *file) {
+    skip_whitespace_and_comments(file);
 
-// ============================================================
-// SAVE THE HEADER TO A FILE
-// ============================================================
+    int value = 0;
+    int character;
+    int digits = 0;
 
-int save_header(const char *path, N148iHeader *header) {
-    FILE *file = fopen(path, "wb"); // "wb" = write binary.
-    if (!file) {
-        printf("Could not create the file!\n");
-        return 0;
+    while ((character = fgetc(file)) != EOF &&
+           character >= '0' && character <= '9') {
+        value = value * 10 + (character - '0');
+        digits++;
     }
 
-    fwrite(N148I_MAGIC, 1, N148I_MAGIC_LEN, file);
-    write_u8(file, header->version);
-    write_u32(file, header->width);
-    write_u32(file, header->height);
-    write_u8(file, header->quality);
-    write_u8(file, header->chroma);
+    if (digits == 0) {
+        return -1;
+    }
 
-    fclose(file);
-    return 1;
+    return value;
 }
 
 // ============================================================
-// READING NUMBERS (in the same order we wrote them)
+// LOAD A BINARY PPM (P6) FILE
 // ============================================================
 
-uint8_t read_u8(FILE *file) {
-    return (uint8_t)fgetc(file);
-}
-
-uint32_t read_u32(FILE *file) {
-    uint32_t b0 = (uint32_t)fgetc(file);
-    uint32_t b1 = (uint32_t)fgetc(file);
-    uint32_t b2 = (uint32_t)fgetc(file);
-    uint32_t b3 = (uint32_t)fgetc(file);
-
-    return b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
-}
-
-// ============================================================
-// LOAD THE HEADER FROM A FILE
-// ============================================================
-
-int load_header(const char *path, N148iHeader *header) {
+int load_ppm(const char *path, Image *image) {
     FILE *file = fopen(path, "rb"); // "rb" = read binary.
     if (!file) {
-        printf("Could not open the file!\n");
+        printf("Could not open '%s'. Is the file in the images/ folder?\n", path);
         return 0;
     }
 
-    // First, check the signature.
-    char magic[6] = {0};
-    fread(magic, 1, N148I_MAGIC_LEN, file);
-    if (memcmp(magic, N148I_MAGIC, N148I_MAGIC_LEN) != 0) {
-        printf("This is NOT a valid N148i file!\n");
+    // 1. Check the magic number: it must be "P6".
+    char magic[3] = {0};
+    if (fread(magic, 1, 2, file) != 2) {
+        printf("File is too small to be a PPM.\n");
         fclose(file);
         return 0;
     }
 
-    // The signature matches: read the remaining fields in storage order.
-    strcpy(header->magic, N148I_MAGIC);
-    header->version = read_u8(file);
-    header->width = read_u32(file);
-    header->height = read_u32(file);
-    header->quality = read_u8(file);
-    header->chroma = read_u8(file);
+    if (magic[0] != 'P' || magic[1] != '6') {
+        printf("Not a binary PPM (P6). Found '%s'.\n", magic);
+        printf("Tip: if it says P3, re-export choosing the BINARY option.\n");
+        fclose(file);
+        return 0;
+    }
+
+    // 2. Read width, height, and maxval from the text header.
+    int width = read_number(file);
+    int height = read_number(file);
+    int maxval = read_number(file);
+
+    if (width <= 0 || height <= 0) {
+        printf("Invalid dimensions in header.\n");
+        fclose(file);
+        return 0;
+    }
+
+    if (maxval != 255) {
+        printf("Only maxval 255 is supported (found %d).\n", maxval);
+        fclose(file);
+        return 0;
+    }
+
+    // 3. Read all the raw pixel bytes at once.
+    long pixel_count = (long)width * height;
+    long byte_count = pixel_count * 3; // 3 bytes per pixel (R, G, B).
+
+    unsigned char *pixels = (unsigned char *)malloc((size_t)byte_count);
+    if (!pixels) {
+        printf("Out of memory.\n");
+        fclose(file);
+        return 0;
+    }
+
+    if (fread(pixels, 1, (size_t)byte_count, file) != (size_t)byte_count) {
+        printf("Pixel data ended too early. Is the file truncated?\n");
+        free(pixels);
+        fclose(file);
+        return 0;
+    }
 
     fclose(file);
+
+    image->width = width;
+    image->height = height;
+    image->pixels = pixels;
     return 1;
 }
 
-const char *chroma_name(uint8_t chroma) {
-    switch (chroma) {
-        case 0:
-            return "4:4:4";
-        case 1:
-            return "4:2:2";
-        case 2:
-            return "4:2:0";
-        default:
-            return "unknown";
+// ============================================================
+// RGB -> YCbCr CONVERSION
+// ============================================================
+//
+// These are the JPEG / ITU-R BT.601 formulas introduced earlier
+// in the series. Y holds brightness; Cb and Cr hold colour.
+
+static unsigned char clamp_byte(double value) {
+    if (value < 0.0) {
+        return 0;
     }
+    if (value > 255.0) {
+        return 255;
+    }
+
+    return (unsigned char)(value + 0.5); // Round to nearest.
+}
+
+int convert_to_ycbcr(Image *image, YCbCrImage *output) {
+    long pixel_count = (long)image->width * image->height;
+
+    output->width = image->width;
+    output->height = image->height;
+    output->y = (unsigned char *)malloc((size_t)pixel_count);
+    output->cb = (unsigned char *)malloc((size_t)pixel_count);
+    output->cr = (unsigned char *)malloc((size_t)pixel_count);
+
+    if (!output->y || !output->cb || !output->cr) {
+        printf("Out of memory.\n");
+        free(output->y);
+        free(output->cb);
+        free(output->cr);
+        output->y = NULL;
+        output->cb = NULL;
+        output->cr = NULL;
+        return 0;
+    }
+
+    for (long i = 0; i < pixel_count; i++) {
+        double red = image->pixels[i * 3 + 0];
+        double green = image->pixels[i * 3 + 1];
+        double blue = image->pixels[i * 3 + 2];
+
+        output->y[i] = clamp_byte(
+            0.299000 * red + 0.587000 * green + 0.114000 * blue);
+        output->cb[i] = clamp_byte(
+            -0.168736 * red - 0.331264 * green + 0.500000 * blue + 128.0);
+        output->cr[i] = clamp_byte(
+            0.500000 * red - 0.418688 * green - 0.081312 * blue + 128.0);
+    }
+
+    return 1;
+}
+
+// ============================================================
+// SAVE A SINGLE CHANNEL AS A GRAYSCALE PGM (P5) FILE
+// ============================================================
+//
+// PGM is the grayscale cousin of PPM: the same idea, but with one
+// byte per pixel instead of three. It lets us inspect each channel.
+
+int save_pgm(const char *path, unsigned char *data, int width, int height) {
+    FILE *file = fopen(path, "wb");
+    if (!file) {
+        printf("Could not create '%s'\n", path);
+        return 0;
+    }
+
+    fprintf(file, "P5\n%d %d\n255\n", width, height); // Text header.
+    fwrite(data, 1, (size_t)((long)width * height), file); // Raw pixels.
+
+    fclose(file);
+    return 1;
 }
 
 // ============================================================
@@ -124,33 +222,56 @@ const char *chroma_name(uint8_t chroma) {
 // ============================================================
 
 int main(void) {
-    // Build an example header: 640x480 image, quality 50, 4:2:0.
-    N148iHeader header;
-    strcpy(header.magic, N148I_MAGIC);
-    header.version = 1;
-    header.width = 640;
-    header.height = 480;
-    header.quality = 50;
-    header.chroma = 2;
-
-    // Save to disk in output/, one level above src/.
-    if (!save_header("../output/image.n148i", &header)) {
-        return EXIT_FAILURE;
-    }
-    printf("File '../output/image.n148i' saved successfully!\n\n");
-
-    // Read the file back and display the decoded header.
-    N148iHeader loaded;
-    if (!load_header("../output/image.n148i", &loaded)) {
+    Image image;
+    if (!load_ppm("../images/example.ppm", &image)) {
         return EXIT_FAILURE;
     }
 
-    printf("--- Header read from file ---\n");
-    printf("Signature: %s\n", loaded.magic);
-    printf("Version:   %d\n", loaded.version);
-    printf("Size:      %u x %u pixels\n", loaded.width, loaded.height);
-    printf("Quality:   %d\n", loaded.quality);
-    printf("Chroma:    %s\n", chroma_name(loaded.chroma));
+    long pixel_count = (long)image.width * image.height;
 
-    return EXIT_SUCCESS;
+    printf("=== PPM loaded successfully ===\n");
+    printf("Size:        %d x %d pixels\n", image.width, image.height);
+    printf("Pixels:      %ld\n", pixel_count);
+    printf("Pixel data:  %ld bytes (%.1f KB)\n\n",
+           pixel_count * 3, (pixel_count * 3) / 1024.0);
+
+    printf("First 3 pixels (RGB):\n");
+    for (int i = 0; i < 3; i++) {
+        printf("  pixel %d: R=%3d G=%3d B=%3d\n", i,
+               image.pixels[i * 3 + 0],
+               image.pixels[i * 3 + 1],
+               image.pixels[i * 3 + 2]);
+    }
+    printf("\n");
+
+    YCbCrImage ycbcr;
+    if (!convert_to_ycbcr(&image, &ycbcr)) {
+        free(image.pixels);
+        return EXIT_FAILURE;
+    }
+
+    printf("Same 3 pixels after RGB -> YCbCr:\n");
+    for (int i = 0; i < 3; i++) {
+        printf("  pixel %d: Y=%3d Cb=%3d Cr=%3d\n", i,
+               ycbcr.y[i], ycbcr.cb[i], ycbcr.cr[i]);
+    }
+    printf("\n");
+
+    // Save each channel so we can inspect it as an image.
+    int channels_saved =
+        save_pgm("../output/channel_y.pgm", ycbcr.y, image.width, image.height) &&
+        save_pgm("../output/channel_cb.pgm", ycbcr.cb, image.width, image.height) &&
+        save_pgm("../output/channel_cr.pgm", ycbcr.cr, image.width, image.height);
+
+    if (channels_saved) {
+        printf("Channels saved to output/: channel_y.pgm, channel_cb.pgm, channel_cr.pgm\n");
+    }
+
+    // Always give allocated memory back.
+    free(image.pixels);
+    free(ycbcr.y);
+    free(ycbcr.cb);
+    free(ycbcr.cr);
+
+    return channels_saved ? EXIT_SUCCESS : EXIT_FAILURE;
 }
