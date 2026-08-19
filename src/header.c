@@ -27,14 +27,16 @@ uint32_t read_u32(FILE *file) {
 }
 
 int write_header(FILE *file, N148iHeader *header) {
-    fwrite(N148I_MAGIC, 1, N148I_MAGIC_LEN, file);
+    if (fwrite(N148I_MAGIC, 1, N148I_MAGIC_LEN, file) != N148I_MAGIC_LEN) {
+        return 0;
+    }
     write_u8(file, header->version);
     write_u32(file, header->width);
     write_u32(file, header->height);
     write_u8(file, header->quality);
     write_u8(file, header->chroma);
     write_u32(file, header->data_size);
-    return 1;
+    return ferror(file) == 0;
 }
 
 int read_header(FILE *file, N148iHeader *header) {
@@ -46,12 +48,29 @@ int read_header(FILE *file, N148iHeader *header) {
         return 0;
     }
 
-    header->version = read_u8(file);
-    header->width = read_u32(file);
-    header->height = read_u32(file);
-    header->quality = read_u8(file);
-    header->chroma = read_u8(file);
-    header->data_size = read_u32(file);
+    unsigned char fields[15];
+    if (fread(fields, 1, sizeof(fields), file) != sizeof(fields)) {
+        return 0;
+    }
+
+    header->version = fields[0];
+    header->width =
+        (uint32_t)fields[1] |
+        ((uint32_t)fields[2] << 8) |
+        ((uint32_t)fields[3] << 16) |
+        ((uint32_t)fields[4] << 24);
+    header->height =
+        (uint32_t)fields[5] |
+        ((uint32_t)fields[6] << 8) |
+        ((uint32_t)fields[7] << 16) |
+        ((uint32_t)fields[8] << 24);
+    header->quality = fields[9];
+    header->chroma = fields[10];
+    header->data_size =
+        (uint32_t)fields[11] |
+        ((uint32_t)fields[12] << 8) |
+        ((uint32_t)fields[13] << 16) |
+        ((uint32_t)fields[14] << 24);
     return 1;
 }
 

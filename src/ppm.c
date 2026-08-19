@@ -89,6 +89,22 @@ int load_ppm(const char *path, Image *image) {
     return 1;
 }
 
+int save_ppm(const char *path, Image *image) {
+    FILE *file = fopen(path, "wb");
+    if (!file) {
+        return 0;
+    }
+
+    long byte_count = (long)image->width * image->height * 3;
+    int header_ok =
+        fprintf(file, "P6\n%d %d\n255\n", image->width, image->height) > 0;
+    int pixels_ok =
+        fwrite(image->pixels, 1, (size_t)byte_count, file) ==
+        (size_t)byte_count;
+    int close_ok = fclose(file) == 0;
+    return header_ok && pixels_ok && close_ok;
+}
+
 void free_image(Image *image) {
     free(image->pixels);
     image->pixels = NULL;
