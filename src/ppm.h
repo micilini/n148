@@ -17,6 +17,7 @@ typedef struct {
 } Plane;
 
 int load_ppm(const char *path, Image *image);
+int save_ppm(const char *path, Image *image);
 void free_image(Image *image);
 
 Plane create_plane(int width, int height);

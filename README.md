@@ -17,52 +17,75 @@ The project is split into two planned formats:
 | **N.148i** | Static images such as photographs, illustrations, and screenshots | `.n148i` |
 | **N.148v** | Video streams and moving images | To be defined |
 
-The current milestone is the first complete **N.148i encoder**. It reads a real PPM image, converts it to YCbCr with 4:2:0 chroma subsampling, compresses every 8 × 8 block, and writes a versioned `.n148i` file containing a header and entropy-coded image payload.
+The current milestone completes the first N.148i round trip: a PPM image is encoded into a compact `.n148i` file, decoded back into RGB pixels, written as a new PPM image, and compared with the original using PSNR.
 
 ---
 
-## Current milestone: full-image encoding
+## Complete round trip
 
-The encoder now connects the stages introduced throughout the series into one end-to-end pipeline:
+The executable now performs both directions of the codec:
 
 ```text
-P6 PPM input
-    ↓
-RGB → YCbCr
-    ↓
-4:2:0 chroma subsampling
-    ↓
-8 × 8 blocks with edge padding
-    ↓
-DCT → quantization → zig-zag
-    ↓
-DC differential coding + AC run-length coding
-    ↓
-JPEG-compatible Huffman tables
-    ↓
-N.148i v2 header + compressed bitstream
+ENCODER                                  DECODER
+P6 PPM input                             N.148i v2 header
+    ↓                                         ↓
+RGB → YCbCr                              Huffman decoding
+    ↓                                         ↓
+4:2:0 chroma subsampling                 Run-length expansion
+    ↓                                         ↓
+8 × 8 blocks + edge padding              Inverse zig-zag
+    ↓                                         ↓
+DCT → quantization                       Dequantization → IDCT
+    ↓                                         ↓
+Zig-zag → RLE → Huffman                  Block reconstruction
+    ↓                                         ↓
+N.148i header + bitstream                Chroma upsampling
+                                              ↓
+                                         YCbCr → RGB
+                                              ↓
+                                         Decoded P6 PPM
 ```
 
-This milestone includes:
+The decoder reverses the encoder in the exact opposite order. Plane ordering is part of the format contract: all Y blocks are stored first, followed by Cb and then Cr, with an independent DC predictor for each plane.
 
-- binary P6 PPM loading with whitespace and comment handling;
-- RGB-to-YCbCr conversion using JPEG/ITU-R BT.601 coefficients;
-- 4:2:0 chroma subsampling by averaging each 2 × 2 pixel region;
-- block traversal with edge replication for dimensions not divisible by eight;
-- two-dimensional DCT with precomputed cosine tables;
-- quality-scaled luminance and chrominance quantization tables;
-- zig-zag coefficient ordering;
-- differential DC prediction reset independently for Y, Cb, and Cr;
-- AC run-length encoding with EOB and ZRL symbols;
-- separate luminance and chrominance Huffman tables;
-- a dynamically growing bit writer;
-- N.148i format version 2 with the compressed payload length in its header.
+---
+
+## Current decoder milestone
+
+This milestone adds:
+
+- canonical Huffman decoding using minimum and maximum codes by bit length;
+- restoration of signed coefficient amplitudes;
+- inverse run-length expansion, including EOB and ZRL symbols;
+- inverse zig-zag ordering and coefficient dequantization;
+- two-dimensional inverse DCT with the original level shift restored;
+- block reconstruction while discarding padded pixels outside the image;
+- nearest-neighbour chroma upsampling from 4:2:0 to full resolution;
+- YCbCr-to-RGB conversion;
+- P6 PPM output through `save_ppm()`;
+- signature, version, dimension, chroma, payload-length, and bitstream checks;
+- PSNR measurement between the source and reconstructed images.
+
+The output is lossy by design. `decoded.ppm` has the same dimensions as the original, but its pixel values reflect quantization and chroma subsampling.
+
+---
+
+## Shared codec modules
+
+Encoder and decoder correctness depends on both sides using identical tables and transforms. Shared definitions therefore live in dedicated modules:
+
+- `tables.c` owns quantization tables, zig-zag order, Huffman definitions, and quality scaling;
+- `dct.c` owns the cosine table, forward DCT, and inverse DCT;
+- `encoder.c` contains only the forward entropy and block pipeline;
+- `decoder.c` contains only the reverse entropy and reconstruction pipeline.
+
+This prevents a table change on one side from silently making newly encoded files incompatible with the decoder.
 
 ---
 
 ## Reference image
 
-The bundled [`images/example.ppm`](images/example.ppm) is the official 320 × 240 P6 fixture from the Micilini lesson. Its original source is available at [micilini.com/assets/img/example.ppm](https://micilini.com/assets/img/example.ppm).
+The bundled [`images/example.ppm`](images/example.ppm) is the official 320 × 240 P6 fixture from the Micilini lessons. Its original source is available at [micilini.com/assets/img/example.ppm](https://micilini.com/assets/img/example.ppm).
 
 | Property | Value |
 | --- | ---: |
@@ -71,13 +94,11 @@ The bundled [`images/example.ppm`](images/example.ppm) is the official 320 × 24
 | File size | 230,415 bytes |
 | SHA-256 | `0bee9996ff9e43c9429a896cfba98dd183419426d28d31bbfcd65ef08ab2a404` |
 
-Using the same fixture makes the encoder output directly comparable with the measurements in the article.
-
 ---
 
 ## N.148i version 2 format
 
-The encoder writes a 20-byte little-endian header followed immediately by the compressed bitstream:
+The decoder reads the same 20-byte little-endian header introduced with the full encoder:
 
 | Offset | Size | Field | Reference value | Description |
 | ---: | ---: | --- | --- | --- |
@@ -85,34 +106,17 @@ The encoder writes a 20-byte little-endian header followed immediately by the co
 | `5` | 1 byte | Version | `2` | Current file-format version |
 | `6` | 4 bytes | Width | `320` | Original image width |
 | `10` | 4 bytes | Height | `240` | Original image height |
-| `14` | 1 byte | Quality | `50` | Quantization quality |
+| `14` | 1 byte | Quality | `50` | Quantization quality required for decoding |
 | `15` | 1 byte | Chroma | `2` | Chroma mode: `2` means 4:2:0 |
 | `16` | 4 bytes | Data size | `3027` | Number of compressed bytes after the header |
 
-For the bundled image at quality 50, the header bytes are:
+Reference header bytes at quality 50:
 
 ```text
 4e 31 34 38 49 02 40 01 00 00 f0 00 00 00 32 02 d3 0b 00 00
 ```
 
-The full reference file is 3,047 bytes: 20 header bytes plus a 3,027-byte compressed payload.
-
----
-
-## Planes, blocks, and padding
-
-The 320 × 240 luminance plane remains at full resolution. With 4:2:0 subsampling, each chroma plane is reduced to 160 × 120.
-
-| Plane | Dimensions | Horizontal blocks | Vertical blocks | Total blocks |
-| --- | ---: | ---: | ---: | ---: |
-| Y | 320 × 240 | 40 | 30 | 1,200 |
-| Cb | 160 × 120 | 20 | 15 | 300 |
-| Cr | 160 × 120 | 20 | 15 | 300 |
-| **Total** |  |  |  | **1,800** |
-
-When a future input dimension is not divisible by eight, `plane_sample()` clamps coordinates to the closest valid edge pixel. Partial blocks are therefore padded by repeating the image boundary rather than discarding pixels.
-
-The planes are encoded sequentially in the bitstream: all Y blocks, then all Cb blocks, then all Cr blocks. Each plane starts with a fresh DC predictor.
+The declared payload size lets the program reject truncated files before attempting to decode incomplete data.
 
 ---
 
@@ -121,18 +125,19 @@ The planes are encoded sequentially in the bitstream: all Y blocks, then all Cb 
 ```text
 n148/
 ├── src/
-│   ├── main.c          # Coordinates loading, encoding, and file output
-│   ├── header.h        # N.148i v2 header contract
-│   ├── header.c        # Little-endian header serialization
-│   ├── ppm.h           # RGB image and channel-plane types
-│   ├── ppm.c           # PPM loading, YCbCr conversion, and 4:2:0
-│   ├── encoder.h       # Public encoder API and statistics
-│   └── encoder.c       # DCT, quantization, zig-zag, RLE, and Huffman
+│   ├── main.c          # Runs the encode/decode cycle and reports PSNR
+│   ├── header.h/.c     # N.148i v2 header serialization
+│   ├── ppm.h/.c        # PPM I/O, color conversion, and channel planes
+│   ├── tables.h/.c     # Shared quantization, zig-zag, and Huffman tables
+│   ├── dct.h/.c        # Shared forward and inverse DCT
+│   ├── encoder.h/.c    # Forward block and entropy pipeline
+│   └── decoder.h/.c    # Reverse pipeline and RGB reconstruction
 ├── images/
 │   └── example.ppm     # Official 320 × 240 Micilini fixture
 ├── output/
-│   └── image.n148i     # Generated N.148i v2 reference file
-├── .gitattributes      # Binary media and codec artifact rules
+│   ├── image.n148i     # Compressed N.148i v2 file
+│   └── decoded.ppm     # Reconstructed P6 image
+├── .gitattributes
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -146,69 +151,78 @@ n148/
 
 - A C compiler with C11 support, such as GCC or Clang
 - The standard C math library
-- A terminal or command prompt
 - No third-party codec libraries
 
-From the repository root:
+From the `src/` directory:
 
 ```bash
-cd src
 gcc -std=c11 -Wall -Wextra -Wpedantic \
-  main.c header.c ppm.c encoder.c -o n148i -lm
+  main.c header.c ppm.c tables.c dct.c encoder.c decoder.c \
+  -o n148i -lm
 ./n148i
 ```
 
-The program intentionally uses paths relative to `src/`, matching the lesson commands.
-
-Expected result with the bundled fixture and quality 50:
+Expected output at quality 50:
 
 ```text
 === N.148i encoder ===
+Input:   ../images/example.ppm  (320 x 240)
+Quality: 50
 
-Input:    ../images/example.ppm
-Size:     320 x 240 pixels
-Quality:  50
-
-Y plane:      320 x 240
-Cb/Cr planes: 160 x 120  (4:2:0)
-
-Blocks encoded:  Y=1200  Cb=300  Cr=300  (total 1800)
-Compressed data: 3027 bytes
-
+Encoded 1800 blocks into 3027 bytes
 Wrote ../output/image.n148i
 
-PPM  original:    230415 bytes  (225.0 KB)
-N148i file:         3047 bytes  (3.0 KB)
-Header:               20 bytes
-Compression:    75.6:1  (98.7% smaller)
+=== N.148i decoder ===
+Header:  version 2, 320 x 240, quality 50, chroma 4:2:0
+Payload: 3027 bytes
+Decoded 1800 blocks, consumed 3027 of 3027 bytes
+Wrote ../output/decoded.ppm
+
+=== Results ===
+Original PPM:   230415 bytes (225.0 KB)
+N148i file:       3047 bytes (3.0 KB)
+Compression:  75.6:1
+PSNR:         33.79 dB
 ```
 
-Inspect the version 2 header on Linux or macOS:
-
-```bash
-od -A d -t x1 -N 20 ../output/image.n148i
-```
+Both PPM files are 320 × 240 RGB24 images and can be opened by applications that support the Netpbm format.
 
 ---
 
-## Quality settings
+## Quality and reconstruction
 
-Quality controls the scaled quantization tables. The default is 50, but it can be overridden at compile time:
+Quality can be overridden at compile time without editing the source:
 
 ```bash
 gcc -std=c11 -Wall -Wextra -Wpedantic -DQUALITY=90 \
-  main.c header.c ppm.c encoder.c -o n148i -lm
+  main.c header.c ppm.c tables.c dct.c encoder.c decoder.c \
+  -o n148i -lm
 ```
 
-The official fixture reproduces the article's size matrix:
+The official fixture reproduces the article's size and PSNR matrix:
 
-| Quality | Payload | Complete N.148i file | Compression ratio |
+| Quality | N.148i size | Compression | PSNR |
 | ---: | ---: | ---: | ---: |
-| 90 | 5,846 bytes | 5,866 bytes | 39.3:1 |
-| 50 | 3,027 bytes | 3,047 bytes | 75.6:1 |
-| 10 | 1,445 bytes | 1,465 bytes | 157.3:1 |
+| 90 | 5,866 bytes | 39.3:1 | 36.17 dB |
+| 50 | 3,047 bytes | 75.6:1 | 33.79 dB |
+| 20 | 1,670 bytes | 138.0:1 | 31.45 dB |
+| 10 | 1,465 bytes | 157.3:1 | 29.52 dB |
 
-Higher quality preserves more coefficients and produces a larger payload. Lower quality quantizes more aggressively and produces a smaller file.
+Higher quality preserves more frequency information and improves reconstruction at the cost of a larger payload. Lower quality increases quantization and compression loss.
+
+---
+
+## Corruption handling
+
+The executable validates the file before reconstruction:
+
+- an incorrect magic signature is rejected as a non-N.148i file;
+- incomplete fixed-size header fields are rejected;
+- unsupported versions, dimensions, or chroma modes are rejected;
+- a payload shorter than the header's `data_size` is reported as truncated;
+- invalid or prematurely exhausted entropy data causes decoding to fail safely.
+
+These checks prevent malformed input from being treated as valid image data.
 
 ---
 
@@ -219,30 +233,31 @@ Compile with strict warnings and runtime sanitizers:
 ```bash
 gcc -std=c11 -Wall -Wextra -Wpedantic -Werror \
   -fsanitize=address,undefined -fno-omit-frame-pointer \
-  main.c header.c ppm.c encoder.c -o /tmp/n148i-sanitized -lm
+  main.c header.c ppm.c tables.c dct.c encoder.c decoder.c \
+  -o /tmp/n148i-sanitized -lm
 ```
 
-Useful invariants for the bundled fixture:
+Important invariants for the reference round trip:
 
-- the input is a valid 320 × 240 raw P6 pixmap;
-- the Y plane contains 1,200 blocks;
-- Cb and Cr contain 300 blocks each;
-- the v2 header occupies exactly 20 bytes;
-- `data_size` equals the number of remaining bytes in the file;
-- the quality-50 output occupies exactly 3,047 bytes.
+- both directions process exactly 1,800 blocks;
+- all 3,027 compressed bytes are consumed;
+- the complete N.148i file occupies 3,047 bytes;
+- `decoded.ppm` is a valid 320 × 240 P6 image;
+- quality-50 reconstruction measures 33.79 dB PSNR;
+- DCT followed by IDCT reproduces unquantized blocks within floating-point tolerance;
+- partial edge blocks and odd image dimensions preserve the original dimensions.
 
 ---
 
 ## Current limitations
 
-The encoder is complete for the current learning milestone, but N.148i is not finished yet:
+The complete learning round trip works, but several improvements remain:
 
-- there is no decoder, so `.n148i` files cannot yet be reconstructed into images;
-- the encoder uses the standard JPEG Huffman tables rather than generating optimized tables per image;
-- `main.c` currently writes only 4:2:0, although the header reserves other chroma modes;
-- the format is custom and is not intended to be opened by JPEG viewers.
-
-The next milestone is the decoder: parsing the compressed payload, reversing Huffman and run-length coding, dequantizing coefficients, applying IDCT, and reconstructing RGB pixels.
+- chroma upsampling uses nearest-neighbour replication rather than bilinear interpolation;
+- Huffman tables are fixed rather than optimized per image;
+- 4:4:4 and 4:2:2 are not exposed as user-selectable encoder modes;
+- quality evaluation currently reports PSNR but not SSIM or VMAF;
+- N.148i is a custom format and is not intended to be opened by JPEG viewers.
 
 ---
 

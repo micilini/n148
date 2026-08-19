@@ -1,12 +1,16 @@
+#include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "decoder.h"
 #include "encoder.h"
 #include "header.h"
 #include "ppm.h"
 
 #define INPUT_PATH "../images/example.ppm"
-#define OUTPUT_PATH "../output/image.n148i"
+#define N148I_PATH "../output/image.n148i"
+#define DECODED_PATH "../output/decoded.ppm"
 #ifndef QUALITY
 #define QUALITY 50
 #endif
@@ -17,97 +21,212 @@ static long file_size(const char *path) {
         return 0;
     }
 
-    fseek(file, 0, SEEK_END);
+    if (fseek(file, 0, SEEK_END) != 0) {
+        fclose(file);
+        return 0;
+    }
     long size = ftell(file);
     fclose(file);
     return size;
 }
 
+static double compute_psnr(Image *first, Image *second) {
+    if (first->width != second->width || first->height != second->height) {
+        return 0.0;
+    }
+
+    long value_count = (long)first->width * first->height * 3;
+    double mean_squared_error = 0.0;
+
+    for (long i = 0; i < value_count; i++) {
+        double difference =
+            (double)first->pixels[i] - (double)second->pixels[i];
+        mean_squared_error += difference * difference;
+    }
+
+    mean_squared_error /= value_count;
+    if (mean_squared_error == 0.0) {
+        return 999.0;
+    }
+
+    return 10.0 * log10(255.0 * 255.0 / mean_squared_error);
+}
+
 int main(void) {
-    // 1. Load the PPM image.
-    Image image;
-    if (!load_ppm(INPUT_PATH, &image)) {
-        return EXIT_FAILURE;
-    }
-
-    printf("=== N.148i encoder ===\n\n");
-    printf("Input:    %s\n", INPUT_PATH);
-    printf("Size:     %d x %d pixels\n", image.width, image.height);
-    printf("Quality:  %d\n\n", QUALITY);
-
-    // 2. Split into Y, Cb, and Cr planes using 4:2:0.
-    Plane y;
-    Plane cb;
-    Plane cr;
-    if (!split_channels(&image, &y, &cb, &cr, 1)) {
-        printf("Could not split channels.\n");
-        free_image(&image);
-        return EXIT_FAILURE;
-    }
-
-    printf("Y plane:      %d x %d\n", y.width, y.height);
-    printf("Cb/Cr planes: %d x %d  (4:2:0)\n\n", cb.width, cb.height);
-
-    // 3. Encode every plane.
+    Image original = {0};
+    Image decoded = {0};
+    Plane y = {0};
+    Plane cb = {0};
+    Plane cr = {0};
+    Plane decoded_y = {0};
+    Plane decoded_cb = {0};
+    Plane decoded_cr = {0};
     unsigned char *compressed = NULL;
-    EncodeStats stats;
-    if (!encode_image(&y, &cb, &cr, QUALITY, &compressed, &stats)) {
-        printf("Encoding failed.\n");
-        free_image(&image);
-        free_plane(&y);
-        free_plane(&cb);
-        free_plane(&cr);
-        return EXIT_FAILURE;
+    unsigned char *payload = NULL;
+    FILE *file = NULL;
+    int exit_code = EXIT_FAILURE;
+
+    // ================= ENCODE =================
+    if (!load_ppm(INPUT_PATH, &original)) {
+        goto cleanup;
     }
 
-    printf("Blocks encoded:  Y=%ld  Cb=%ld  Cr=%ld  (total %ld)\n",
-           stats.blocks_y, stats.blocks_cb, stats.blocks_cr,
-           stats.blocks_y + stats.blocks_cb + stats.blocks_cr);
-    printf("Compressed data: %ld bytes\n\n", stats.data_size);
+    printf("=== N.148i encoder ===\n");
+    printf("Input:   %s  (%d x %d)\n", INPUT_PATH,
+           original.width, original.height);
+    printf("Quality: %d\n\n", QUALITY);
 
-    // 4. Write the N.148i version 2 header and compressed payload.
-    FILE *file = fopen(OUTPUT_PATH, "wb");
+    if (!split_channels(&original, &y, &cb, &cr, 1)) {
+        printf("Could not split channels.\n");
+        goto cleanup;
+    }
+
+    EncodeStats encode_stats;
+    if (!encode_image(&y, &cb, &cr, QUALITY,
+                      &compressed, &encode_stats)) {
+        printf("Encoding failed.\n");
+        goto cleanup;
+    }
+
+    long encoded_blocks =
+        encode_stats.blocks_y +
+        encode_stats.blocks_cb +
+        encode_stats.blocks_cr;
+    printf("Encoded %ld blocks into %ld bytes\n",
+           encoded_blocks, encode_stats.data_size);
+
+    file = fopen(N148I_PATH, "wb");
     if (!file) {
-        printf("Could not create '%s'\n", OUTPUT_PATH);
-        free(compressed);
-        free_image(&image);
-        free_plane(&y);
-        free_plane(&cb);
-        free_plane(&cr);
-        return EXIT_FAILURE;
+        printf("Could not create '%s'\n", N148I_PATH);
+        goto cleanup;
     }
 
     N148iHeader header;
     header.version = N148I_VERSION;
-    header.width = (uint32_t)image.width;
-    header.height = (uint32_t)image.height;
+    header.width = (uint32_t)original.width;
+    header.height = (uint32_t)original.height;
     header.quality = QUALITY;
     header.chroma = CHROMA_420;
-    header.data_size = (uint32_t)stats.data_size;
+    header.data_size = (uint32_t)encode_stats.data_size;
 
-    write_header(file, &header);
-    fwrite(compressed, 1, (size_t)stats.data_size, file);
-    fclose(file);
+    int write_ok = write_header(file, &header);
+    if (write_ok) {
+        write_ok =
+            fwrite(compressed, 1, (size_t)encode_stats.data_size, file) ==
+            (size_t)encode_stats.data_size;
+    }
+    int close_ok = fclose(file) == 0;
+    file = NULL;
+    if (!write_ok || !close_ok) {
+        printf("Could not write '%s'\n", N148I_PATH);
+        goto cleanup;
+    }
+    printf("Wrote %s\n\n", N148I_PATH);
 
-    // 5. Report compression statistics.
-    long ppm_bytes = file_size(INPUT_PATH);
-    long n148_bytes = file_size(OUTPUT_PATH);
-
-    printf("Wrote %s\n\n", OUTPUT_PATH);
-    printf("PPM  original:  %8ld bytes  (%.1f KB)\n",
-           ppm_bytes, ppm_bytes / 1024.0);
-    printf("N148i file:     %8ld bytes  (%.1f KB)\n",
-           n148_bytes, n148_bytes / 1024.0);
-    printf("Header:               %2d bytes\n", 20);
-    printf("Compression:    %.1f:1  (%.1f%% smaller)\n",
-           (double)ppm_bytes / n148_bytes,
-           100.0 * (1.0 - (double)n148_bytes / ppm_bytes));
-
-    // 6. Clean up.
     free(compressed);
-    free_image(&image);
+    compressed = NULL;
     free_plane(&y);
     free_plane(&cb);
     free_plane(&cr);
-    return EXIT_SUCCESS;
+
+    // ================= DECODE =================
+    printf("=== N.148i decoder ===\n");
+
+    file = fopen(N148I_PATH, "rb");
+    if (!file) {
+        printf("Could not open '%s'\n", N148I_PATH);
+        goto cleanup;
+    }
+
+    N148iHeader loaded;
+    if (!read_header(file, &loaded)) {
+        printf("This is not a valid N148i file!\n");
+        goto cleanup;
+    }
+    if (loaded.version != N148I_VERSION ||
+        loaded.width == 0 || loaded.width > INT_MAX ||
+        loaded.height == 0 || loaded.height > INT_MAX ||
+        (loaded.chroma != CHROMA_444 && loaded.chroma != CHROMA_420) ||
+        loaded.data_size == 0) {
+        printf("Unsupported N148i header!\n");
+        goto cleanup;
+    }
+
+    printf("Header:  version %d, %u x %u, quality %d, chroma %s\n",
+           loaded.version, loaded.width, loaded.height,
+           loaded.quality, chroma_name(loaded.chroma));
+    printf("Payload: %u bytes\n", loaded.data_size);
+
+    payload = (unsigned char *)malloc(loaded.data_size);
+    if (!payload) {
+        printf("Out of memory while reading the payload.\n");
+        goto cleanup;
+    }
+
+    if (fread(payload, 1, loaded.data_size, file) != loaded.data_size) {
+        printf("File is truncated!\n");
+        goto cleanup;
+    }
+    fclose(file);
+    file = NULL;
+
+    DecodeStats decode_stats;
+    if (!decode_image(payload, loaded.data_size,
+                      (int)loaded.width, (int)loaded.height,
+                      loaded.quality, loaded.chroma,
+                      &decoded_y, &decoded_cb, &decoded_cr,
+                      &decode_stats)) {
+        printf("Compressed payload is invalid or truncated!\n");
+        goto cleanup;
+    }
+
+    long decoded_blocks =
+        decode_stats.blocks_y +
+        decode_stats.blocks_cb +
+        decode_stats.blocks_cr;
+    printf("Decoded %ld blocks, consumed %ld of %u bytes\n",
+           decoded_blocks, decode_stats.bytes_consumed,
+           loaded.data_size);
+
+    if (!merge_channels(&decoded_y, &decoded_cb, &decoded_cr, &decoded)) {
+        printf("Could not rebuild the RGB image.\n");
+        goto cleanup;
+    }
+    if (!save_ppm(DECODED_PATH, &decoded)) {
+        printf("Could not write '%s'\n", DECODED_PATH);
+        goto cleanup;
+    }
+    printf("Wrote %s\n\n", DECODED_PATH);
+
+    // ================= RESULTS =================
+    long original_bytes = file_size(INPUT_PATH);
+    long n148i_bytes = file_size(N148I_PATH);
+    double psnr = compute_psnr(&original, &decoded);
+
+    printf("=== Results ===\n");
+    printf("Original PPM: %8ld bytes (%.1f KB)\n",
+           original_bytes, original_bytes / 1024.0);
+    printf("N148i file:   %8ld bytes (%.1f KB)\n",
+           n148i_bytes, n148i_bytes / 1024.0);
+    printf("Compression:  %.1f:1\n",
+           (double)original_bytes / n148i_bytes);
+    printf("PSNR:         %.2f dB\n", psnr);
+
+    exit_code = EXIT_SUCCESS;
+
+cleanup:
+    if (file) {
+        fclose(file);
+    }
+    free(compressed);
+    free(payload);
+    free_image(&original);
+    free_image(&decoded);
+    free_plane(&y);
+    free_plane(&cb);
+    free_plane(&cr);
+    free_plane(&decoded_y);
+    free_plane(&decoded_cb);
+    free_plane(&decoded_cr);
+    return exit_code;
 }
