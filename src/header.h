@@ -6,10 +6,12 @@
 
 #define N148I_MAGIC "N148I"
 #define N148I_MAGIC_LEN 5
-#define N148I_VERSION 2
+#define N148I_VERSION 3
+#define N148I_HEADER_SIZE 21
 
 // Chroma subsampling modes.
 #define CHROMA_444 0
+#define CHROMA_422 1
 #define CHROMA_420 2
 
 typedef struct {
@@ -18,6 +20,7 @@ typedef struct {
     uint32_t height;
     uint8_t quality;
     uint8_t chroma;
+    uint8_t optimized; // Non-zero when custom Huffman tables follow.
     uint32_t data_size; // Number of compressed bytes after the header.
 } N148iHeader;
 

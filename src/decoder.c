@@ -1,8 +1,11 @@
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "dct.h"
 #include "decoder.h"
+#include "header.h"
+#include "huffman.h"
 #include "tables.h"
 
 // ============================================================
@@ -16,23 +19,22 @@ typedef struct {
     const unsigned char *values;
 } HuffDecodeTable;
 
-static void build_decode_table(const int bits[17],
-                               const unsigned char *values,
+static void build_decode_table(const HuffSpec *spec,
                                HuffDecodeTable *table) {
-    table->values = values;
+    table->values = spec->values;
     int code = 0;
     int value_index = 0;
 
     for (int length = 1; length <= 16; length++) {
-        if (bits[length] == 0) {
+        if (spec->bits[length] == 0) {
             table->min_code[length] = 0;
             table->max_code[length] = -1;
             table->value_index[length] = 0;
         } else {
             table->value_index[length] = value_index;
             table->min_code[length] = code;
-            code += bits[length];
-            value_index += bits[length];
+            code += spec->bits[length];
+            value_index += spec->bits[length];
             table->max_code[length] = code - 1;
         }
         code <<= 1;
@@ -229,9 +231,12 @@ static long decode_plane(BitReader *reader, Plane *plane,
 
 int decode_image(unsigned char *buffer, long buffer_size,
                  int width, int height, int quality, int chroma,
+                 const HuffSpec specs[HUFFMAN_TABLE_COUNT],
                  Plane *y, Plane *cb, Plane *cr, DecodeStats *stats) {
     if (!buffer || buffer_size <= 0 || width <= 0 || height <= 0 ||
-        (chroma != 0 && chroma != 2)) {
+        !specs || !y || !cb || !cr || !stats ||
+        (chroma != CHROMA_444 && chroma != CHROMA_422 &&
+         chroma != CHROMA_420)) {
         return 0;
     }
 
@@ -241,18 +246,25 @@ int decode_image(unsigned char *buffer, long buffer_size,
     HuffDecodeTable ac_luma;
     HuffDecodeTable dc_chroma;
     HuffDecodeTable ac_chroma;
-    build_decode_table(BITS_DC_LUMA, VAL_DC_LUMA, &dc_luma);
-    build_decode_table(BITS_AC_LUMA, VAL_AC_LUMA, &ac_luma);
-    build_decode_table(BITS_DC_CHROMA, VAL_DC_CHROMA, &dc_chroma);
-    build_decode_table(BITS_AC_CHROMA, VAL_AC_CHROMA, &ac_chroma);
+    for (int table = 0; table < HUFFMAN_TABLE_COUNT; table++) {
+        if (!huffman_spec_is_valid(&specs[table])) {
+            return 0;
+        }
+    }
+    build_decode_table(&specs[HUFFMAN_DC_LUMA], &dc_luma);
+    build_decode_table(&specs[HUFFMAN_AC_LUMA], &ac_luma);
+    build_decode_table(&specs[HUFFMAN_DC_CHROMA], &dc_chroma);
+    build_decode_table(&specs[HUFFMAN_AC_CHROMA], &ac_chroma);
 
     int quant_luma[8][8];
     int quant_chroma[8][8];
     scale_table(Q_LUMA_BASE, quality, quant_luma);
     scale_table(Q_CHROMA_BASE, quality, quant_chroma);
 
-    int chroma_width = (chroma == 2) ? (width + 1) / 2 : width;
-    int chroma_height = (chroma == 2) ? (height + 1) / 2 : height;
+    int chroma_width;
+    int chroma_height;
+    chroma_dimensions(chroma, width, height,
+                      &chroma_width, &chroma_height);
 
     *y = create_plane(width, height);
     *cb = create_plane(chroma_width, chroma_height);
@@ -301,7 +313,26 @@ static unsigned char clamp_byte(double value) {
     return (unsigned char)(value + 0.5);
 }
 
-int merge_channels(Plane *y, Plane *cb, Plane *cr, Image *output) {
+// Bilinear sampling blends the four neighbours around a fractional point.
+// plane_sample() clamps all edge coordinates safely.
+static double sample_bilinear(Plane *plane, double x, double y) {
+    int x0 = (int)floor(x);
+    int y0 = (int)floor(y);
+    double fraction_x = x - x0;
+    double fraction_y = y - y0;
+
+    double top =
+        plane_sample(plane, x0, y0) * (1.0 - fraction_x) +
+        plane_sample(plane, x0 + 1, y0) * fraction_x;
+    double bottom =
+        plane_sample(plane, x0, y0 + 1) * (1.0 - fraction_x) +
+        plane_sample(plane, x0 + 1, y0 + 1) * fraction_x;
+
+    return top * (1.0 - fraction_y) + bottom * fraction_y;
+}
+
+int merge_channels(Plane *y, Plane *cb, Plane *cr,
+                   int smooth, Image *output) {
     int width = y->width;
     int height = y->height;
 
@@ -318,21 +349,33 @@ int merge_channels(Plane *y, Plane *cb, Plane *cr, Image *output) {
         return 0;
     }
 
-    int scale_x = (cb->width < width) ? 2 : 1;
-    int scale_y = (cb->height < height) ? 2 : 1;
+    double scale_x = (double)cb->width / width;
+    double scale_y = (double)cb->height / height;
 
     for (int pixel_y = 0; pixel_y < height; pixel_y++) {
         for (int pixel_x = 0; pixel_x < width; pixel_x++) {
             double luma = y->data[(long)pixel_y * width + pixel_x];
 
-            // Nearest-neighbour upsampling reuses one chroma value for
-            // every pixel in its original 2x2 group.
-            int chroma_x = pixel_x / scale_x;
-            int chroma_y = pixel_y / scale_y;
-            double blue_difference =
-                plane_sample(cb, chroma_x, chroma_y) - 128.0;
-            double red_difference =
-                plane_sample(cr, chroma_x, chroma_y) - 128.0;
+            double blue_difference;
+            double red_difference;
+            if (smooth) {
+                // Map pixel centres between the luma and chroma grids.
+                double chroma_x =
+                    (pixel_x + 0.5) * scale_x - 0.5;
+                double chroma_y =
+                    (pixel_y + 0.5) * scale_y - 0.5;
+                blue_difference =
+                    sample_bilinear(cb, chroma_x, chroma_y) - 128.0;
+                red_difference =
+                    sample_bilinear(cr, chroma_x, chroma_y) - 128.0;
+            } else {
+                int chroma_x = (int)(pixel_x * scale_x);
+                int chroma_y = (int)(pixel_y * scale_y);
+                blue_difference =
+                    plane_sample(cb, chroma_x, chroma_y) - 128.0;
+                red_difference =
+                    plane_sample(cr, chroma_x, chroma_y) - 128.0;
+            }
 
             double red = luma + 1.402 * red_difference;
             double green = luma - 0.344136 * blue_difference -
