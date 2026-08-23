@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
+#include "header.h"
 #include "ppm.h"
 
 // PPM header parsing helpers carried forward from article 15.
@@ -152,7 +152,55 @@ static unsigned char clamp_byte(double value) {
     return (unsigned char)(value + 0.5);
 }
 
-int split_channels(Image *image, Plane *y, Plane *cb, Plane *cr, int subsample) {
+void chroma_dimensions(int mode, int width, int height, int *cw, int *ch) {
+    switch (mode) {
+        case CHROMA_422:
+            *cw = (width + 1) / 2;
+            *ch = height;
+            break;
+        case CHROMA_420:
+            *cw = (width + 1) / 2;
+            *ch = (height + 1) / 2;
+            break;
+        default:
+            *cw = width;
+            *ch = height;
+            break;
+    }
+}
+
+// Average all full-resolution samples represented by one stored chroma
+// sample. Clamping duplicates the final row or column for odd dimensions.
+static void downsample_plane(unsigned char *full, int width, int height,
+                             Plane *output, int step_x, int step_y) {
+    for (int y = 0; y < output->height; y++) {
+        for (int x = 0; x < output->width; x++) {
+            int sum = 0;
+            int count = 0;
+
+            for (int dy = 0; dy < step_y; dy++) {
+                for (int dx = 0; dx < step_x; dx++) {
+                    int source_x = x * step_x + dx;
+                    int source_y = y * step_y + dy;
+                    if (source_x >= width) {
+                        source_x = width - 1;
+                    }
+                    if (source_y >= height) {
+                        source_y = height - 1;
+                    }
+                    sum += full[(long)source_y * width + source_x];
+                    count++;
+                }
+            }
+
+            output->data[(long)y * output->width + x] =
+                (unsigned char)((sum + count / 2) / count);
+        }
+    }
+}
+
+int split_channels(Image *image, Plane *y, Plane *cb, Plane *cr,
+                   int chroma_mode) {
     int width = image->width;
     int height = image->height;
     long pixel_count = (long)width * height;
@@ -182,59 +230,25 @@ int split_channels(Image *image, Plane *y, Plane *cb, Plane *cr, int subsample) 
             0.500000 * red - 0.418688 * green - 0.081312 * blue + 128.0);
     }
 
-    if (!subsample) {
-        *cb = create_plane(width, height);
-        *cr = create_plane(width, height);
-        if (!cb->data || !cr->data) {
-            free_plane(y);
-            free_plane(cb);
-            free_plane(cr);
-            free(cb_full);
-            free(cr_full);
-            return 0;
-        }
-        memcpy(cb->data, cb_full, (size_t)pixel_count);
-        memcpy(cr->data, cr_full, (size_t)pixel_count);
-    } else {
-        // 4:2:0: one chroma sample for every 2x2 block of pixels.
-        int chroma_width = (width + 1) / 2;
-        int chroma_height = (height + 1) / 2;
-        *cb = create_plane(chroma_width, chroma_height);
-        *cr = create_plane(chroma_width, chroma_height);
-        if (!cb->data || !cr->data) {
-            free_plane(y);
-            free_plane(cb);
-            free_plane(cr);
-            free(cb_full);
-            free(cr_full);
-            return 0;
-        }
-
-        for (int yy = 0; yy < chroma_height; yy++) {
-            for (int xx = 0; xx < chroma_width; xx++) {
-                int x0 = xx * 2;
-                int y0 = yy * 2;
-                int x1 = (x0 + 1 < width) ? x0 + 1 : x0;
-                int y1 = (y0 + 1 < height) ? y0 + 1 : y0;
-
-                int sum_cb =
-                    cb_full[(long)y0 * width + x0] +
-                    cb_full[(long)y0 * width + x1] +
-                    cb_full[(long)y1 * width + x0] +
-                    cb_full[(long)y1 * width + x1];
-                int sum_cr =
-                    cr_full[(long)y0 * width + x0] +
-                    cr_full[(long)y0 * width + x1] +
-                    cr_full[(long)y1 * width + x0] +
-                    cr_full[(long)y1 * width + x1];
-
-                cb->data[(long)yy * chroma_width + xx] =
-                    (unsigned char)((sum_cb + 2) / 4);
-                cr->data[(long)yy * chroma_width + xx] =
-                    (unsigned char)((sum_cr + 2) / 4);
-            }
-        }
+    int chroma_width;
+    int chroma_height;
+    chroma_dimensions(chroma_mode, width, height,
+                      &chroma_width, &chroma_height);
+    *cb = create_plane(chroma_width, chroma_height);
+    *cr = create_plane(chroma_width, chroma_height);
+    if (!cb->data || !cr->data) {
+        free_plane(y);
+        free_plane(cb);
+        free_plane(cr);
+        free(cb_full);
+        free(cr_full);
+        return 0;
     }
+
+    int step_x = (chroma_mode == CHROMA_444) ? 1 : 2;
+    int step_y = (chroma_mode == CHROMA_420) ? 2 : 1;
+    downsample_plane(cb_full, width, height, cb, step_x, step_y);
+    downsample_plane(cr_full, width, height, cr, step_x, step_y);
 
     free(cb_full);
     free(cr_full);

@@ -27,9 +27,12 @@ void free_plane(Plane *plane);
 // This provides padding for partial 8x8 blocks.
 int plane_sample(Plane *plane, int x, int y);
 
+// Calculates the stored chroma-plane size for a subsampling mode.
+void chroma_dimensions(int mode, int width, int height, int *cw, int *ch);
+
 // Splits an RGB image into Y, Cb, and Cr planes.
-// subsample != 0 halves both chroma dimensions (4:2:0).
-int split_channels(Image *image, Plane *y, Plane *cb, Plane *cr, int subsample);
+int split_channels(Image *image, Plane *y, Plane *cb, Plane *cr,
+                   int chroma_mode);
 
 int save_pgm(const char *path, Plane *plane);
 

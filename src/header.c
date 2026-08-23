@@ -35,6 +35,7 @@ int write_header(FILE *file, N148iHeader *header) {
     write_u32(file, header->height);
     write_u8(file, header->quality);
     write_u8(file, header->chroma);
+    write_u8(file, header->optimized);
     write_u32(file, header->data_size);
     return ferror(file) == 0;
 }
@@ -48,7 +49,7 @@ int read_header(FILE *file, N148iHeader *header) {
         return 0;
     }
 
-    unsigned char fields[15];
+    unsigned char fields[16];
     if (fread(fields, 1, sizeof(fields), file) != sizeof(fields)) {
         return 0;
     }
@@ -66,11 +67,12 @@ int read_header(FILE *file, N148iHeader *header) {
         ((uint32_t)fields[8] << 24);
     header->quality = fields[9];
     header->chroma = fields[10];
+    header->optimized = fields[11];
     header->data_size =
-        (uint32_t)fields[11] |
-        ((uint32_t)fields[12] << 8) |
-        ((uint32_t)fields[13] << 16) |
-        ((uint32_t)fields[14] << 24);
+        (uint32_t)fields[12] |
+        ((uint32_t)fields[13] << 8) |
+        ((uint32_t)fields[14] << 16) |
+        ((uint32_t)fields[15] << 24);
     return 1;
 }
 
@@ -78,7 +80,7 @@ const char *chroma_name(uint8_t chroma) {
     switch (chroma) {
         case CHROMA_444:
             return "4:4:4";
-        case 1:
+        case CHROMA_422:
             return "4:2:2";
         case CHROMA_420:
             return "4:2:0";

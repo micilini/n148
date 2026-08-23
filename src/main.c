@@ -6,6 +6,7 @@
 #include "decoder.h"
 #include "encoder.h"
 #include "header.h"
+#include "huffman.h"
 #include "ppm.h"
 
 #define INPUT_PATH "../images/example.ppm"
@@ -13,6 +14,15 @@
 #define DECODED_PATH "../output/decoded.ppm"
 #ifndef QUALITY
 #define QUALITY 50
+#endif
+#ifndef CHROMA_MODE
+#define CHROMA_MODE CHROMA_420
+#endif
+#ifndef OPTIMIZE
+#define OPTIMIZE 1
+#endif
+#ifndef SMOOTH_UPSAMPLING
+#define SMOOTH_UPSAMPLING 1
 #endif
 
 static long file_size(const char *path) {
@@ -63,8 +73,18 @@ int main(void) {
     Plane decoded_cr = {0};
     unsigned char *compressed = NULL;
     unsigned char *payload = NULL;
+    HuffSpec encode_specs[HUFFMAN_TABLE_COUNT];
+    HuffSpec decode_specs[HUFFMAN_TABLE_COUNT];
     FILE *file = NULL;
     int exit_code = EXIT_FAILURE;
+
+    if ((CHROMA_MODE != CHROMA_444 && CHROMA_MODE != CHROMA_422 &&
+         CHROMA_MODE != CHROMA_420) ||
+        (OPTIMIZE != 0 && OPTIMIZE != 1) ||
+        (SMOOTH_UPSAMPLING != 0 && SMOOTH_UPSAMPLING != 1)) {
+        printf("Invalid codec configuration.\n");
+        goto cleanup;
+    }
 
     // ================= ENCODE =================
     if (!load_ppm(INPUT_PATH, &original)) {
@@ -72,17 +92,22 @@ int main(void) {
     }
 
     printf("=== N.148i encoder ===\n");
-    printf("Input:   %s  (%d x %d)\n", INPUT_PATH,
+    printf("Input:    %s  (%d x %d)\n", INPUT_PATH,
            original.width, original.height);
-    printf("Quality: %d\n\n", QUALITY);
+    printf("Quality:  %d\n", QUALITY);
+    printf("Chroma:   %s\n", chroma_name(CHROMA_MODE));
+    printf("Huffman:  %s\n\n",
+           OPTIMIZE ? "optimized for this image" : "standard tables");
 
-    if (!split_channels(&original, &y, &cb, &cr, 1)) {
+    if (!split_channels(&original, &y, &cb, &cr, CHROMA_MODE)) {
         printf("Could not split channels.\n");
         goto cleanup;
     }
+    printf("Y plane:      %d x %d\n", y.width, y.height);
+    printf("Cb/Cr planes: %d x %d\n\n", cb.width, cb.height);
 
     EncodeStats encode_stats;
-    if (!encode_image(&y, &cb, &cr, QUALITY,
+    if (!encode_image(&y, &cb, &cr, QUALITY, OPTIMIZE, encode_specs,
                       &compressed, &encode_stats)) {
         printf("Encoding failed.\n");
         goto cleanup;
@@ -92,8 +117,12 @@ int main(void) {
         encode_stats.blocks_y +
         encode_stats.blocks_cb +
         encode_stats.blocks_cr;
-    printf("Encoded %ld blocks into %ld bytes\n",
-           encoded_blocks, encode_stats.data_size);
+    printf("Encoded %ld blocks\n", encoded_blocks);
+    if (OPTIMIZE) {
+        printf("Huffman tables: %ld bytes stored in the file\n",
+               encode_stats.table_size);
+    }
+    printf("Entropy data:   %ld bytes\n", encode_stats.data_size);
 
     file = fopen(N148I_PATH, "wb");
     if (!file) {
@@ -106,10 +135,14 @@ int main(void) {
     header.width = (uint32_t)original.width;
     header.height = (uint32_t)original.height;
     header.quality = QUALITY;
-    header.chroma = CHROMA_420;
+    header.chroma = CHROMA_MODE;
+    header.optimized = OPTIMIZE;
     header.data_size = (uint32_t)encode_stats.data_size;
 
     int write_ok = write_header(file, &header);
+    if (write_ok && header.optimized) {
+        write_ok = write_huffman_tables(file, encode_specs);
+    }
     if (write_ok) {
         write_ok =
             fwrite(compressed, 1, (size_t)encode_stats.data_size, file) ==
@@ -146,16 +179,28 @@ int main(void) {
     if (loaded.version != N148I_VERSION ||
         loaded.width == 0 || loaded.width > INT_MAX ||
         loaded.height == 0 || loaded.height > INT_MAX ||
-        (loaded.chroma != CHROMA_444 && loaded.chroma != CHROMA_420) ||
+        loaded.quality == 0 || loaded.quality > 100 ||
+        (loaded.chroma != CHROMA_444 && loaded.chroma != CHROMA_422 &&
+         loaded.chroma != CHROMA_420) ||
+        loaded.optimized > 1 ||
         loaded.data_size == 0) {
         printf("Unsupported N148i header!\n");
         goto cleanup;
     }
 
-    printf("Header:  version %d, %u x %u, quality %d, chroma %s\n",
+    printf("Header:  v%d, %u x %u, quality %d, chroma %s, %s tables\n",
            loaded.version, loaded.width, loaded.height,
-           loaded.quality, chroma_name(loaded.chroma));
-    printf("Payload: %u bytes\n", loaded.data_size);
+           loaded.quality, chroma_name(loaded.chroma),
+           loaded.optimized ? "custom" : "standard");
+
+    if (loaded.optimized) {
+        if (!read_huffman_tables(file, decode_specs)) {
+            printf("Custom Huffman tables are invalid or truncated!\n");
+            goto cleanup;
+        }
+    } else {
+        huffman_default_specs(decode_specs);
+    }
 
     payload = (unsigned char *)malloc(loaded.data_size);
     if (!payload) {
@@ -174,6 +219,7 @@ int main(void) {
     if (!decode_image(payload, loaded.data_size,
                       (int)loaded.width, (int)loaded.height,
                       loaded.quality, loaded.chroma,
+                      decode_specs,
                       &decoded_y, &decoded_cb, &decoded_cr,
                       &decode_stats)) {
         printf("Compressed payload is invalid or truncated!\n");
@@ -188,10 +234,13 @@ int main(void) {
            decoded_blocks, decode_stats.bytes_consumed,
            loaded.data_size);
 
-    if (!merge_channels(&decoded_y, &decoded_cb, &decoded_cr, &decoded)) {
+    if (!merge_channels(&decoded_y, &decoded_cb, &decoded_cr,
+                        SMOOTH_UPSAMPLING, &decoded)) {
         printf("Could not rebuild the RGB image.\n");
         goto cleanup;
     }
+    printf("Upsampling: %s\n",
+           SMOOTH_UPSAMPLING ? "bilinear" : "nearest neighbour");
     if (!save_ppm(DECODED_PATH, &decoded)) {
         printf("Could not write '%s'\n", DECODED_PATH);
         goto cleanup;
