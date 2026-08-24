@@ -127,19 +127,34 @@ typedef struct {
     int is_dc;
 } Token;
 
-static int tokenize_block(double block[8][8],
-                          int quantization[8][8],
+// The fast transform leaves every coefficient multiplied by a known
+// constant. Rather than dividing it back out on every block, the
+// constant is folded into the quantization table once, at startup.
+// Quantizing then becomes a multiplication instead of a division.
+typedef struct {
+    float reciprocal[64];
+} ScaledQuant;
+
+static void build_scaled_quant(int quantization[8][8], ScaledQuant *out) {
+    for (int row = 0; row < 8; row++) {
+        for (int column = 0; column < 8; column++) {
+            out->reciprocal[row * 8 + column] = (float)(1.0 /
+                (quantization[row][column] * aan_scale_factor(row, column)));
+        }
+    }
+}
+
+static int tokenize_block(const float block[64],
+                          const ScaledQuant *quantization,
                           int *previous_dc, Token tokens[64]) {
-    double coefficients[8][8];
-    dct_block(block, coefficients);
+    float coefficients[64];
+    dct_block_fast(block, coefficients);
 
     int zigzag[64];
     for (int i = 0; i < 64; i++) {
         int index = ZIGZAG[i];
-        int row = index / 8;
-        int column = index % 8;
-        zigzag[i] = (int)round(
-            coefficients[row][column] / quantization[row][column]);
+        zigzag[i] = (int)lrintf(
+            coefficients[index] * quantization->reciprocal[index]);
     }
 
     // DC: differential pulse-code modulation.
@@ -192,7 +207,7 @@ static int tokenize_block(double block[8][8],
 // PROCESS A WHOLE PLANE, BLOCK BY BLOCK
 // ============================================================
 
-static long process_plane(Plane *plane, int quantization[8][8],
+static long process_plane(Plane *plane, const ScaledQuant *quantization,
                           int dc_table_index, int ac_table_index,
                           long frequencies[HUFFMAN_TABLE_COUNT][256],
                           BitWriter *writer,
@@ -203,10 +218,10 @@ static long process_plane(Plane *plane, int quantization[8][8],
 
     for (int block_y = 0; block_y < blocks_y; block_y++) {
         for (int block_x = 0; block_x < blocks_x; block_x++) {
-            double block[8][8];
+            float block[64];
             for (int row = 0; row < 8; row++) {
                 for (int column = 0; column < 8; column++) {
-                    block[row][column] = (double)plane_sample(
+                    block[row * 8 + column] = (float)plane_sample(
                         plane, block_x * 8 + column, block_y * 8 + row);
                 }
             }
@@ -263,22 +278,26 @@ int encode_image(Plane *y, Plane *cb, Plane *cr, int quality, int optimize,
 
     *out_buffer = NULL;
     memset(stats, 0, sizeof(*stats));
-    init_dct_tables();
 
     int quant_luma[8][8];
     int quant_chroma[8][8];
     scale_table(Q_LUMA_BASE, quality, quant_luma);
     scale_table(Q_CHROMA_BASE, quality, quant_chroma);
 
+    ScaledQuant scaled_luma;
+    ScaledQuant scaled_chroma;
+    build_scaled_quant(quant_luma, &scaled_luma);
+    build_scaled_quant(quant_chroma, &scaled_chroma);
+
     if (optimize) {
         long frequencies[HUFFMAN_TABLE_COUNT][256] = {{0}};
-        if (process_plane(y, quant_luma,
+        if (process_plane(y, &scaled_luma,
                           HUFFMAN_DC_LUMA, HUFFMAN_AC_LUMA,
                           frequencies, NULL, NULL) < 0 ||
-            process_plane(cb, quant_chroma,
+            process_plane(cb, &scaled_chroma,
                           HUFFMAN_DC_CHROMA, HUFFMAN_AC_CHROMA,
                           frequencies, NULL, NULL) < 0 ||
-            process_plane(cr, quant_chroma,
+            process_plane(cr, &scaled_chroma,
                           HUFFMAN_DC_CHROMA, HUFFMAN_AC_CHROMA,
                           frequencies, NULL, NULL) < 0) {
             return 0;
@@ -306,13 +325,13 @@ int encode_image(Plane *y, Plane *cb, Plane *cr, int quality, int optimize,
     }
 
     stats->blocks_y = process_plane(
-        y, quant_luma, HUFFMAN_DC_LUMA, HUFFMAN_AC_LUMA,
+        y, &scaled_luma, HUFFMAN_DC_LUMA, HUFFMAN_AC_LUMA,
         NULL, &writer, tables);
     stats->blocks_cb = process_plane(
-        cb, quant_chroma, HUFFMAN_DC_CHROMA, HUFFMAN_AC_CHROMA,
+        cb, &scaled_chroma, HUFFMAN_DC_CHROMA, HUFFMAN_AC_CHROMA,
         NULL, &writer, tables);
     stats->blocks_cr = process_plane(
-        cr, quant_chroma, HUFFMAN_DC_CHROMA, HUFFMAN_AC_CHROMA,
+        cr, &scaled_chroma, HUFFMAN_DC_CHROMA, HUFFMAN_AC_CHROMA,
         NULL, &writer, tables);
 
     if (stats->blocks_y < 0 || stats->blocks_cb < 0 ||

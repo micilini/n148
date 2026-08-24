@@ -117,8 +117,25 @@ static int br_read_amplitude(BitReader *reader, int size) {
 // DECODE ONE 8x8 BLOCK
 // ============================================================
 
-static int decode_block(BitReader *reader, double block[8][8],
-                        int quantization[8][8],
+// The fast inverse transform expects its input already multiplied by
+// the AAN constants, so those are folded into the dequantization
+// table exactly as they were folded into the encoder's table.
+typedef struct {
+    float multiplier[64];
+} ScaledDequant;
+
+static void build_scaled_dequant(int quantization[8][8], ScaledDequant *out) {
+    for (int row = 0; row < 8; row++) {
+        for (int column = 0; column < 8; column++) {
+            out->multiplier[row * 8 + column] = (float)(
+                quantization[row][column] *
+                aan_scale_factor(row, column) / 64.0);
+        }
+    }
+}
+
+static int decode_block(BitReader *reader, float block[64],
+                        const ScaledDequant *quantization,
                         HuffDecodeTable *dc_table,
                         HuffDecodeTable *ac_table,
                         int *previous_dc) {
@@ -174,21 +191,18 @@ static int decode_block(BitReader *reader, double block[8][8],
     }
 
     // Undo quantization and zig-zag ordering in one pass.
-    double coefficients[8][8];
+    float coefficients[64];
     for (int i = 0; i < 64; i++) {
         int index = ZIGZAG[i];
-        int row = index / 8;
-        int column = index % 8;
-        coefficients[row][column] =
-            (double)(zigzag[i] * quantization[row][column]);
+        coefficients[index] = zigzag[i] * quantization->multiplier[index];
     }
 
-    idct_block(coefficients, block);
+    idct_block_fast(coefficients, block);
     return 1;
 }
 
 static long decode_plane(BitReader *reader, Plane *plane,
-                         int quantization[8][8],
+                         const ScaledDequant *quantization,
                          HuffDecodeTable *dc_table,
                          HuffDecodeTable *ac_table) {
     int blocks_x = (plane->width + 7) / 8;
@@ -197,7 +211,7 @@ static long decode_plane(BitReader *reader, Plane *plane,
 
     for (int block_y = 0; block_y < blocks_y; block_y++) {
         for (int block_x = 0; block_x < blocks_x; block_x++) {
-            double block[8][8];
+            float block[64];
             if (!decode_block(reader, block, quantization,
                               dc_table, ac_table, &previous_dc)) {
                 return -1;
@@ -212,15 +226,15 @@ static long decode_plane(BitReader *reader, Plane *plane,
                         continue;
                     }
 
-                    double value = block[row][column];
-                    if (value < 0.0) {
-                        value = 0.0;
+                    float value = block[row * 8 + column];
+                    if (value < 0.0f) {
+                        value = 0.0f;
                     }
-                    if (value > 255.0) {
-                        value = 255.0;
+                    if (value > 255.0f) {
+                        value = 255.0f;
                     }
                     plane->data[(long)y * plane->width + x] =
-                        (unsigned char)(value + 0.5);
+                        (unsigned char)(value + 0.5f);
                 }
             }
         }
@@ -239,8 +253,6 @@ int decode_image(unsigned char *buffer, long buffer_size,
          chroma != CHROMA_420)) {
         return 0;
     }
-
-    init_dct_tables();
 
     HuffDecodeTable dc_luma;
     HuffDecodeTable ac_luma;
@@ -261,6 +273,11 @@ int decode_image(unsigned char *buffer, long buffer_size,
     scale_table(Q_LUMA_BASE, quality, quant_luma);
     scale_table(Q_CHROMA_BASE, quality, quant_chroma);
 
+    ScaledDequant scaled_luma;
+    ScaledDequant scaled_chroma;
+    build_scaled_dequant(quant_luma, &scaled_luma);
+    build_scaled_dequant(quant_chroma, &scaled_chroma);
+
     int chroma_width;
     int chroma_height;
     chroma_dimensions(chroma, width, height,
@@ -280,11 +297,11 @@ int decode_image(unsigned char *buffer, long buffer_size,
     br_init(&reader, buffer, buffer_size);
 
     stats->blocks_y = decode_plane(
-        &reader, y, quant_luma, &dc_luma, &ac_luma);
+        &reader, y, &scaled_luma, &dc_luma, &ac_luma);
     stats->blocks_cb = decode_plane(
-        &reader, cb, quant_chroma, &dc_chroma, &ac_chroma);
+        &reader, cb, &scaled_chroma, &dc_chroma, &ac_chroma);
     stats->blocks_cr = decode_plane(
-        &reader, cr, quant_chroma, &dc_chroma, &ac_chroma);
+        &reader, cr, &scaled_chroma, &dc_chroma, &ac_chroma);
 
     if (stats->blocks_y < 0 || stats->blocks_cb < 0 ||
         stats->blocks_cr < 0 || reader.failed) {
