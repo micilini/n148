@@ -17,7 +17,7 @@ The project is split into two planned formats:
 | **N.148i** | Static images such as photographs, illustrations, and screenshots | `.n148i` |
 | **N.148v** | Video streams and moving images | To be defined |
 
-The current milestone adds runtime SIMD dispatch and AVX2 implementations of the Arai-Agui-Nakajima (AAN) forward and inverse transforms.
+The current milestone applies runtime-dispatched AVX2 to the codec's main per-pixel and per-block hot paths: color conversion, quantization, block loading, and the Arai-Agui-Nakajima (AAN) transforms.
 
 ---
 
@@ -29,19 +29,19 @@ The executable now performs both directions of the codec:
 ENCODER                                  DECODER
 P6 PPM input                             N.148i v3 header
     ↓                                         ↓
-RGB → YCbCr                              Huffman decoding
+RGB → fixed-point YCbCr                  Huffman decoding
     ↓                                         ↓
 4:4:4 / 4:2:2 / 4:2:0 chroma            Run-length expansion
     ↓                                         ↓
-8 × 8 blocks + edge padding              Inverse zig-zag
+8 × 8 blocks + vector loads              Inverse zig-zag
     ↓                                         ↓
-AAN DCT → scaled quantization            Scaled dequantization → AAN IDCT
+AAN DCT → AVX2 quantization              Scaled dequantization → AAN IDCT
     ↓                                         ↓
 Zig-zag → RLE → optimized Huffman        Block reconstruction
     ↓                                         ↓
 Header + tables + bitstream              Bilinear chroma upsampling
                                               ↓
-                                         YCbCr → RGB
+                                         Fixed-point YCbCr → RGB
                                               ↓
                                          Decoded P6 PPM
 ```
@@ -57,10 +57,13 @@ This milestone adds:
 - runtime CPU detection with CPUID and operating-system AVX state checks;
 - portable scalar fallback on processors without AVX2;
 - AVX2 AAN forward and inverse transforms that process eight columns together;
+- fixed-point RGB/YCbCr conversion for eight pixels at a time, with byte shuffles, saturating packing, and scalar tails;
+- contiguous AVX2 quantization followed by 16-bit zig-zag reordering, avoiding processor-dependent gather performance;
+- vector loading of complete interior 8 × 8 blocks while partial edge blocks retain clamped scalar sampling;
 - per-function AVX2 targeting, so the rest of the binary keeps its baseline ISA;
 - a test override for comparing scalar and vector paths in the same binary.
 
-The N.148i format, compressed bytes, and reconstructed quality remain unchanged between the scalar and AVX2 paths.
+The N.148i format, compressed bytes, and reconstructed pixels remain unchanged between the scalar and AVX2 paths. Compared with the previous double-precision color conversion, fixed-point rounding can move a few source-dependent compressed bits without changing measured reconstruction quality.
 
 ---
 
@@ -72,8 +75,9 @@ Encoder and decoder correctness depends on both sides using identical tables and
 - `huffman.c` builds, validates, serializes, and reads canonical Huffman specifications;
 - `cpu.c` detects the SIMD level supported by both the processor and operating system;
 - `dct.c` owns the scalar and AVX2 AAN forward and inverse passes;
-- `encoder.c` folds AAN scaling into reciprocal quantization tables and tokenizes blocks once for both frequency counting and bit writing;
-- `decoder.c` folds AAN scaling and inverse normalization into dequantization tables before reconstruction.
+- `ppm.c` owns scalar and AVX2 fixed-point color separation before chroma subsampling;
+- `encoder.c` folds AAN scaling into reciprocal quantization tables, loads complete blocks with AVX2, and quantizes contiguously before zig-zag ordering;
+- `decoder.c` folds AAN scaling and inverse normalization into dequantization tables, upsamples chroma, and rebuilds interleaved RGB with scalar or AVX2 fixed-point conversion.
 
 This prevents a table change on one side from silently making newly encoded files incompatible with the decoder.
 
@@ -124,13 +128,13 @@ n148/
 ├── src/
 │   ├── main.c          # Runs the encode/decode cycle and reports PSNR
 │   ├── header.h/.c     # N.148i v3 header serialization
-│   ├── ppm.h/.c        # PPM I/O, color conversion, and channel planes
+│   ├── ppm.h/.c        # PPM I/O and scalar/AVX2 RGB color separation
 │   ├── tables.h/.c     # Shared quantization, zig-zag, and Huffman tables
 │   ├── huffman.h/.c    # Optimized Huffman construction and table I/O
 │   ├── cpu.h/.c        # Runtime SIMD capability detection
 │   ├── dct.h/.c        # Scalar and AVX2 AAN forward and inverse DCT
-│   ├── encoder.h/.c    # Forward block and entropy pipeline
-│   └── decoder.h/.c    # Reverse pipeline and RGB reconstruction
+│   ├── encoder.h/.c    # SIMD block loading, quantization, and entropy pipeline
+│   └── decoder.h/.c    # Reverse pipeline and scalar/AVX2 RGB reconstruction
 ├── images/
 │   └── example.ppm     # Official 320 × 240 Micilini fixture
 ├── output/
@@ -253,7 +257,7 @@ Important invariants for the reference round trip:
 - quality-50 reconstruction measures 34.70 dB PSNR;
 - normalized AAN coefficients match the separable DCT within floating-point tolerance;
 - AAN DCT followed by AAN IDCT reproduces unquantized blocks within floating-point tolerance;
-- scalar and AVX2 transforms produce interchangeable compressed and reconstructed output;
+- scalar and AVX2 transforms, color conversion, quantization, and block loading produce byte-identical compressed and reconstructed output;
 - partial edge blocks and odd image dimensions preserve the original dimensions.
 
 ---
