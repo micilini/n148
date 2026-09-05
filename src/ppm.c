@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "cpu.h"
 #include "header.h"
+#include "parallel.h"
 #include "ppm.h"
 
 #if defined(__x86_64__) || defined(__i386__)
@@ -280,6 +282,20 @@ static long rgb_to_ycbcr_avx2(const unsigned char *rgb,
 
 #endif
 
+static void rgb_to_ycbcr(const unsigned char *rgb, int count,
+                         unsigned char *y, unsigned char *cb,
+                         unsigned char *cr) {
+    long converted = 0;
+#if defined(__x86_64__) || defined(__i386__)
+    if (n148_cpu_level() >= N148_CPU_AVX2) {
+        converted = rgb_to_ycbcr_avx2(rgb, y, cb, cr, count);
+    }
+#endif
+    rgb_to_ycbcr_scalar(rgb + converted * 3, y + converted,
+                        cb + converted, cr + converted,
+                        count - converted);
+}
+
 void chroma_dimensions(int mode, int width, int height, int *cw, int *ch) {
     switch (mode) {
         case CHROMA_422:
@@ -299,32 +315,196 @@ void chroma_dimensions(int mode, int width, int height, int *cw, int *ch) {
 
 // Average all full-resolution samples represented by one stored chroma
 // sample. Clamping duplicates the final row or column for odd dimensions.
-static void downsample_plane(unsigned char *full, int width, int height,
-                             Plane *output, int step_x, int step_y) {
-    for (int y = 0; y < output->height; y++) {
-        for (int x = 0; x < output->width; x++) {
+typedef struct {
+    const unsigned char *full;
+    int width;
+    int height;
+    Plane *output;
+    int step_x;
+    int step_y;
+} DownsampleJob;
+
+static void downsample_rows(long start, long end, int worker, void *context) {
+    (void)worker;
+    DownsampleJob *job = (DownsampleJob *)context;
+    for (long y = start; y < end; y++) {
+        for (int x = 0; x < job->output->width; x++) {
             int sum = 0;
             int count = 0;
 
-            for (int dy = 0; dy < step_y; dy++) {
-                for (int dx = 0; dx < step_x; dx++) {
-                    int source_x = x * step_x + dx;
-                    int source_y = y * step_y + dy;
-                    if (source_x >= width) {
-                        source_x = width - 1;
+            for (int dy = 0; dy < job->step_y; dy++) {
+                for (int dx = 0; dx < job->step_x; dx++) {
+                    int source_x = x * job->step_x + dx;
+                    int source_y = (int)y * job->step_y + dy;
+                    if (source_x >= job->width) {
+                        source_x = job->width - 1;
                     }
-                    if (source_y >= height) {
-                        source_y = height - 1;
+                    if (source_y >= job->height) {
+                        source_y = job->height - 1;
                     }
-                    sum += full[(long)source_y * width + source_x];
+                    sum += job->full[(long)source_y * job->width + source_x];
                     count++;
                 }
             }
 
-            output->data[(long)y * output->width + x] =
+            job->output->data[y * job->output->width + x] =
                 (unsigned char)((sum + count / 2) / count);
         }
     }
+}
+
+static void downsample_plane(const unsigned char *full, int width, int height,
+                             Plane *output, int step_x, int step_y) {
+    DownsampleJob job = {full, width, height, output, step_x, step_y};
+    n148_parallel_for(output->height, downsample_rows, &job);
+}
+
+typedef struct {
+    Image *image;
+    Plane *y;
+    unsigned char *cb;
+    unsigned char *cr;
+    int width;
+} ColorJob;
+
+static void color_rows(long start, long end, int worker, void *context) {
+    (void)worker;
+    ColorJob *job = (ColorJob *)context;
+    for (long row = start; row < end; row++) {
+        const unsigned char *rgb =
+            job->image->pixels + row * job->width * 3;
+        rgb_to_ycbcr(rgb, job->width,
+                     job->y->data + row * job->width,
+                     job->cb + row * job->width,
+                     job->cr + row * job->width);
+    }
+}
+
+#if defined(__x86_64__) || defined(__i386__)
+
+__attribute__((target("avx2")))
+static void downsample_420_rows_avx2(const unsigned char *cb0,
+                                     const unsigned char *cb1,
+                                     const unsigned char *cr0,
+                                     const unsigned char *cr1,
+                                     int width, unsigned char *out_cb,
+                                     unsigned char *out_cr, int out_width) {
+    const __m256i ones = _mm256_set1_epi8(1);
+    const __m256i two = _mm256_set1_epi16(2);
+    int x = 0;
+    for (; x + 16 <= out_width && 2 * x + 32 <= width; x += 16) {
+        int source = x * 2;
+        __m256i cb_top =
+            _mm256_loadu_si256((const __m256i *)(cb0 + source));
+        __m256i cb_bottom =
+            _mm256_loadu_si256((const __m256i *)(cb1 + source));
+        __m256i cr_top =
+            _mm256_loadu_si256((const __m256i *)(cr0 + source));
+        __m256i cr_bottom =
+            _mm256_loadu_si256((const __m256i *)(cr1 + source));
+        __m256i cb_sum = _mm256_add_epi16(
+            _mm256_maddubs_epi16(cb_top, ones),
+            _mm256_maddubs_epi16(cb_bottom, ones));
+        __m256i cr_sum = _mm256_add_epi16(
+            _mm256_maddubs_epi16(cr_top, ones),
+            _mm256_maddubs_epi16(cr_bottom, ones));
+        cb_sum = _mm256_srli_epi16(_mm256_add_epi16(cb_sum, two), 2);
+        cr_sum = _mm256_srli_epi16(_mm256_add_epi16(cr_sum, two), 2);
+        __m128i cb_bytes = _mm_packus_epi16(
+            _mm256_castsi256_si128(cb_sum),
+            _mm256_extracti128_si256(cb_sum, 1));
+        __m128i cr_bytes = _mm_packus_epi16(
+            _mm256_castsi256_si128(cr_sum),
+            _mm256_extracti128_si256(cr_sum, 1));
+        _mm_storeu_si128((__m128i *)(out_cb + x), cb_bytes);
+        _mm_storeu_si128((__m128i *)(out_cr + x), cr_bytes);
+    }
+    for (; x < out_width; x++) {
+        int source = x * 2;
+        int next = source + 1 < width ? source + 1 : width - 1;
+        out_cb[x] = (unsigned char)((cb0[source] + cb0[next] +
+                                     cb1[source] + cb1[next] + 2) >> 2);
+        out_cr[x] = (unsigned char)((cr0[source] + cr0[next] +
+                                     cr1[source] + cr1[next] + 2) >> 2);
+    }
+}
+
+#endif
+
+typedef struct {
+    Image *image;
+    Plane *y;
+    Plane *cb;
+    Plane *cr;
+    int use_avx2;
+    int failed;
+} Color420Job;
+
+static void color_420_rows(long start, long end, int worker, void *context) {
+    (void)worker;
+    Color420Job *job = (Color420Job *)context;
+    int width = job->image->width;
+    int height = job->image->height;
+
+#define COLOR_STACK_WIDTH 2048
+    _Alignas(32) unsigned char stack_rows[COLOR_STACK_WIDTH * 4];
+    unsigned char *allocated = NULL;
+    unsigned char *cb0;
+    if (width <= COLOR_STACK_WIDTH) {
+        cb0 = stack_rows;
+    } else {
+        allocated = (unsigned char *)malloc((size_t)width * 4);
+        if (!allocated) {
+#if defined(__GNUC__) || defined(__clang__)
+            __atomic_store_n(&job->failed, 1, __ATOMIC_RELAXED);
+#else
+            job->failed = 1;
+#endif
+            return;
+        }
+        cb0 = allocated;
+    }
+    unsigned char *cr0 = cb0 + width;
+    unsigned char *cb1 = cr0 + width;
+    unsigned char *cr1 = cb1 + width;
+
+    for (long cy = start; cy < end; cy++) {
+        int row0 = (int)cy * 2;
+        int row1 = row0 + 1;
+        const unsigned char *rgb0 =
+            job->image->pixels + (long)row0 * width * 3;
+        rgb_to_ycbcr(rgb0, width, job->y->data + (long)row0 * width,
+                     cb0, cr0);
+        if (row1 < height) {
+            const unsigned char *rgb1 =
+                job->image->pixels + (long)row1 * width * 3;
+            rgb_to_ycbcr(rgb1, width, job->y->data + (long)row1 * width,
+                         cb1, cr1);
+        } else {
+            memcpy(cb1, cb0, (size_t)width);
+            memcpy(cr1, cr0, (size_t)width);
+        }
+
+        unsigned char *out_cb = job->cb->data + cy * job->cb->width;
+        unsigned char *out_cr = job->cr->data + cy * job->cr->width;
+#if defined(__x86_64__) || defined(__i386__)
+        if (job->use_avx2) {
+            downsample_420_rows_avx2(cb0, cb1, cr0, cr1, width,
+                                     out_cb, out_cr, job->cb->width);
+            continue;
+        }
+#endif
+        for (int x = 0; x < job->cb->width; x++) {
+            int source = x * 2;
+            int next = source + 1 < width ? source + 1 : width - 1;
+            out_cb[x] = (unsigned char)((cb0[source] + cb0[next] +
+                                         cb1[source] + cb1[next] + 2) >> 2);
+            out_cr[x] = (unsigned char)((cr0[source] + cr0[next] +
+                                         cr1[source] + cr1[next] + 2) >> 2);
+        }
+    }
+    free(allocated);
+#undef COLOR_STACK_WIDTH
 }
 
 int split_channels(Image *image, Plane *y, Plane *cb, Plane *cr,
@@ -335,36 +515,43 @@ int split_channels(Image *image, Plane *y, Plane *cb, Plane *cr,
 
     *y = create_plane(width, height);
 
-    // Build full-resolution chroma first, then average it down if needed.
-    unsigned char *cb_full = (unsigned char *)malloc((size_t)pixel_count);
-    unsigned char *cr_full = (unsigned char *)malloc((size_t)pixel_count);
-    if (!y->data || !cb_full || !cr_full) {
-        free_plane(y);
-        free(cb_full);
-        free(cr_full);
-        return 0;
-    }
-
-    long converted = 0;
-#if defined(__x86_64__) || defined(__i386__)
-    if (n148_cpu_level() >= N148_CPU_AVX2) {
-        converted = rgb_to_ycbcr_avx2(image->pixels, y->data,
-                                      cb_full, cr_full, pixel_count);
-    }
-#endif
-    rgb_to_ycbcr_scalar(image->pixels + converted * 3,
-                        y->data + converted,
-                        cb_full + converted,
-                        cr_full + converted,
-                        pixel_count - converted);
-
     int chroma_width;
     int chroma_height;
     chroma_dimensions(chroma_mode, width, height,
                       &chroma_width, &chroma_height);
     *cb = create_plane(chroma_width, chroma_height);
     *cr = create_plane(chroma_width, chroma_height);
-    if (!cb->data || !cr->data) {
+    if (!y->data || !cb->data || !cr->data) {
+        free_plane(y);
+        free_plane(cb);
+        free_plane(cr);
+        return 0;
+    }
+
+    if (chroma_mode == CHROMA_420) {
+        Color420Job job = {
+            image, y, cb, cr,
+            n148_cpu_level() >= N148_CPU_AVX2, 0
+        };
+        n148_parallel_for(chroma_height, color_420_rows, &job);
+#if defined(__GNUC__) || defined(__clang__)
+        int failed = __atomic_load_n(&job.failed, __ATOMIC_RELAXED);
+#else
+        int failed = job.failed;
+#endif
+        if (failed) {
+            free_plane(y);
+            free_plane(cb);
+            free_plane(cr);
+            return 0;
+        }
+        return 1;
+    }
+
+    // Build full-resolution chroma first, then average it down if needed.
+    unsigned char *cb_full = (unsigned char *)malloc((size_t)pixel_count);
+    unsigned char *cr_full = (unsigned char *)malloc((size_t)pixel_count);
+    if (!cb_full || !cr_full) {
         free_plane(y);
         free_plane(cb);
         free_plane(cr);
@@ -373,10 +560,15 @@ int split_channels(Image *image, Plane *y, Plane *cb, Plane *cr,
         return 0;
     }
 
+    // Each row is independent, so the conversion is split across workers.
+    // On a single core this runs inline with no handover overhead.
+    (void)n148_cpu_level();
+    ColorJob color = {image, y, cb_full, cr_full, width};
+    n148_parallel_for(height, color_rows, &color);
+
     int step_x = (chroma_mode == CHROMA_444) ? 1 : 2;
-    int step_y = (chroma_mode == CHROMA_420) ? 2 : 1;
-    downsample_plane(cb_full, width, height, cb, step_x, step_y);
-    downsample_plane(cr_full, width, height, cr, step_x, step_y);
+    downsample_plane(cb_full, width, height, cb, step_x, 1);
+    downsample_plane(cr_full, width, height, cr, step_x, 1);
 
     free(cb_full);
     free(cr_full);

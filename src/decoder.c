@@ -7,6 +7,7 @@
 #include "decoder.h"
 #include "header.h"
 #include "huffman.h"
+#include "parallel.h"
 #include "tables.h"
 
 #if defined(__x86_64__) || defined(__i386__)
@@ -18,6 +19,8 @@
 // ============================================================
 
 #define LOOKUP_BITS 10
+#define SPARSE_TWO_BASE   (1 << 12)
+#define SPARSE_THREE_BASE (1 << 18)
 
 typedef struct {
     int min_code[17];
@@ -230,6 +233,10 @@ static void build_scaled_dequant(int quantization[8][8], ScaledDequant *out) {
     }
 }
 
+/* Returns zero on malformed input, one when the caller already has the final
+   block or needs the full transform, or a negative sparse descriptor. Sparse
+   descriptors pack one, two or three surviving AC indices into the value so
+   the caller can pick the matching specialised reconstruction. */
 static int decode_block(BitReader *reader, float block[64],
                         const ScaledDequant *quantization,
                         HuffDecodeTable *dc_table,
@@ -253,6 +260,9 @@ static int decode_block(BitReader *reader, float block[64],
     // AC: expand (run, size) pairs into the remaining 63 slots.
     int position = 1;
     int nonzero_ac = 0;
+    int first_ac_index = 0;
+    int second_ac_index = 0;
+    int third_ac_index = 0;
     while (position < 64) {
         int symbol = br_read_symbol(reader, ac_table);
         if (symbol < 0) {
@@ -284,7 +294,15 @@ static int decode_block(BitReader *reader, float block[64],
         if (reader->failed) {
             return 0;
         }
-        nonzero_ac = 1;
+        int natural_index = ZIGZAG[position];
+        if (nonzero_ac == 0) {
+            first_ac_index = natural_index;
+        } else if (nonzero_ac == 1) {
+            second_ac_index = natural_index;
+        } else if (nonzero_ac == 2) {
+            third_ac_index = natural_index;
+        }
+        nonzero_ac++;
         position++;
     }
 
@@ -307,13 +325,24 @@ static int decode_block(BitReader *reader, float block[64],
     }
 
     // Undo quantization and zig-zag ordering in one pass.
-    float coefficients[64];
     for (int i = 0; i < 64; i++) {
         int index = ZIGZAG[i];
-        coefficients[index] = zigzag[i] * quantization->multiplier[index];
+        block[index] = zigzag[i] * quantization->multiplier[index];
     }
 
-    idct_block_fast(coefficients, block);
+    if (nonzero_ac == 1) {
+        return -first_ac_index;
+    }
+    if (nonzero_ac == 2) {
+        return -(SPARSE_TWO_BASE +
+                 (first_ac_index << 6) + second_ac_index);
+    }
+    if (nonzero_ac == 3) {
+        return -(SPARSE_THREE_BASE + (first_ac_index << 12) +
+                 (second_ac_index << 6) + third_ac_index);
+    }
+
+    idct_block_fast(block, block);
     return 1;
 }
 
@@ -324,13 +353,53 @@ static long decode_plane(BitReader *reader, Plane *plane,
     int blocks_x = (plane->width + 7) / 8;
     int blocks_y = (plane->height + 7) / 8;
     int previous_dc = 0;
+    int use_sparse_avx2 = n148_cpu_level() >= N148_CPU_AVX2;
 
     for (int block_y = 0; block_y < blocks_y; block_y++) {
         for (int block_x = 0; block_x < blocks_x; block_x++) {
             float block[64];
-            if (!decode_block(reader, block, quantization,
-                              dc_table, ac_table, &previous_dc)) {
+            int result = decode_block(reader, block, quantization,
+                                      dc_table, ac_table, &previous_dc);
+            if (result == 0) {
                 return -1;
+            }
+
+            int interior = (block_x + 1) * 8 <= plane->width &&
+                           (block_y + 1) * 8 <= plane->height;
+#if defined(__x86_64__) || defined(__i386__)
+            if (result < 0 && interior && use_sparse_avx2) {
+                int sparse = -result;
+                unsigned char *destination =
+                    plane->data + (long)block_y * 8 * plane->width +
+                    block_x * 8;
+                if (sparse >= SPARSE_THREE_BASE) {
+                    int packed = sparse - SPARSE_THREE_BASE;
+                    int first = (packed >> 12) & 63;
+                    int second = (packed >> 6) & 63;
+                    int third = packed & 63;
+                    idct_block_store_three_avx2(
+                        block[0], block[first], first,
+                        block[second], second, block[third], third,
+                        destination, plane->width);
+                } else if (sparse >= SPARSE_TWO_BASE) {
+                    int packed = sparse - SPARSE_TWO_BASE;
+                    int first = (packed >> 6) & 63;
+                    int second = packed & 63;
+                    idct_block_store_two_avx2(
+                        block[0], block[first], first,
+                        block[second], second,
+                        destination, plane->width);
+                } else {
+                    int first = sparse;
+                    idct_block_store_single_avx2(
+                        block[0], block[first], first,
+                        destination, plane->width);
+                }
+                continue;
+            }
+#endif
+            if (result < 0) {
+                idct_block_fast(block, block);
             }
 
             // Copy real pixels and discard encoded padding outside the plane.
@@ -495,6 +564,123 @@ static void expand_nearest_chroma_row(Plane *plane, int py, int dst_width,
     }
 }
 
+#if defined(__x86_64__) || defined(__i386__)
+
+// Vertical blend of two chroma rows, sixteen samples per pass.
+__attribute__((target("avx2")))
+static void blend_rows_avx2(const unsigned char *near_row,
+                            const unsigned char *far_row,
+                            int count, unsigned short *out) {
+    const __m256i three = _mm256_set1_epi16(3);
+    int x = 0;
+    for (; x + 16 <= count; x += 16) {
+        __m256i near_values = _mm256_cvtepu8_epi16(
+            _mm_loadu_si128((const __m128i *)(near_row + x)));
+        __m256i far_values = _mm256_cvtepu8_epi16(
+            _mm_loadu_si128((const __m128i *)(far_row + x)));
+        _mm256_storeu_si256(
+            (__m256i *)(out + x),
+            _mm256_add_epi16(
+                _mm256_mullo_epi16(near_values, three), far_values));
+    }
+    for (; x < count; x++) {
+        out[x] = (unsigned short)(3 * near_row[x] + far_row[x]);
+    }
+}
+
+// Horizontal stretch: every source sample produces the two outputs it
+// dominates, so both are computed as vectors and interleaved back.
+__attribute__((target("avx2")))
+static void stretch_avx2(const unsigned short *source, int first, int last,
+                         unsigned short *destination) {
+    const __m256i three = _mm256_set1_epi16(3);
+    int position = first;
+    for (; position + 16 <= last; position += 16) {
+        __m256i current = _mm256_loadu_si256(
+            (const __m256i *)(source + position));
+        __m256i previous = _mm256_loadu_si256(
+            (const __m256i *)(source + position - 1));
+        __m256i next = _mm256_loadu_si256(
+            (const __m256i *)(source + position + 1));
+
+        __m256i scaled = _mm256_mullo_epi16(current, three);
+        __m256i even = _mm256_add_epi16(scaled, previous);
+        __m256i odd = _mm256_add_epi16(scaled, next);
+
+        __m256i low = _mm256_unpacklo_epi16(even, odd);
+        __m256i high = _mm256_unpackhi_epi16(even, odd);
+        _mm256_storeu_si256(
+            (__m256i *)(destination + 2 * position),
+            _mm256_permute2x128_si256(low, high, 0x20));
+        _mm256_storeu_si256(
+            (__m256i *)(destination + 2 * position + 16),
+            _mm256_permute2x128_si256(low, high, 0x31));
+    }
+    for (; position < last; position++) {
+        int center = source[position] * 3;
+        destination[2 * position] =
+            (unsigned short)(center + source[position - 1]);
+        destination[2 * position + 1] =
+            (unsigned short)(center + source[position + 1]);
+    }
+}
+
+__attribute__((target("avx2")))
+static void expand_chroma_row_avx2(Plane *plane, int py, int dst_width,
+                                   int stretch_x, int stretch_y,
+                                   unsigned short *destination,
+                                   unsigned short *vertical) {
+    int near_y = stretch_y ? (py >> 1) : py;
+    int far_y = stretch_y
+        ? ((py & 1) ? near_y + 1 : near_y - 1)
+        : near_y;
+    if (near_y < 0) near_y = 0;
+    if (near_y >= plane->height) near_y = plane->height - 1;
+    if (far_y < 0) far_y = 0;
+    if (far_y >= plane->height) far_y = plane->height - 1;
+
+    const unsigned char *near_row =
+        plane->data + (long)near_y * plane->width;
+    const unsigned char *far_row =
+        plane->data + (long)far_y * plane->width;
+    blend_rows_avx2(near_row, far_row, plane->width, vertical);
+
+    if (!stretch_x) {
+        for (int x = 0; x < dst_width; x++) {
+            destination[x] = (unsigned short)(vertical[x] * 4);
+        }
+        return;
+    }
+
+    int source_width = plane->width;
+    if (source_width == 1) {
+        for (int x = 0; x < dst_width; x++) {
+            destination[x] = (unsigned short)(vertical[0] * 4);
+        }
+        return;
+    }
+
+    destination[0] = (unsigned short)(vertical[0] * 4);
+    if (dst_width > 1) {
+        destination[1] =
+            (unsigned short)(vertical[0] * 3 + vertical[1]);
+    }
+
+    int last = source_width - 1;
+    stretch_avx2(vertical, 1, last, destination);
+    int final_even = last * 2;
+    if (final_even < dst_width) {
+        destination[final_even] =
+            (unsigned short)(vertical[last] * 3 + vertical[last - 1]);
+    }
+    if (final_even + 1 < dst_width) {
+        destination[final_even + 1] =
+            (unsigned short)(vertical[last] * 4);
+    }
+}
+
+#endif
+
 static void ycbcr_to_rgb_scalar(const unsigned char *y,
                                 const unsigned short *cb,
                                 const unsigned short *cr,
@@ -614,6 +800,118 @@ static int ycbcr_to_rgb_avx2(const unsigned char *y,
     return i;
 }
 
+static void ycbcr_row_avx2(const unsigned char *luma,
+                           const unsigned short *blue,
+                           const unsigned short *red,
+                           unsigned char *output, int count) {
+    int converted = ycbcr_to_rgb_avx2(
+        luma, blue, red, output, count);
+    ycbcr_to_rgb_scalar(luma + converted, blue + converted,
+                        red + converted, output + converted * 3,
+                        count - converted);
+}
+
+__attribute__((target("avx2,fma"), always_inline))
+static inline void finish_ycbcr8_avx2(__m256 luma, __m256 blue,
+                                      __m256 red, __m256 red_result,
+                                      __m256 blue_result,
+                                      unsigned char *output) {
+    const __m256 k_g_cb = _mm256_set1_ps(0.344136f);
+    const __m256 k_g_cr = _mm256_set1_ps(0.714136f);
+    __m256 green_result = _mm256_fnmadd_ps(blue, k_g_cb, luma);
+    green_result = _mm256_fnmadd_ps(red, k_g_cr, green_result);
+
+    __m256i red32 = _mm256_cvtps_epi32(red_result);
+    __m256i green32 = _mm256_cvtps_epi32(green_result);
+    __m256i blue32 = _mm256_cvtps_epi32(blue_result);
+    __m128i red16 = _mm_packs_epi32(
+        _mm256_castsi256_si128(red32),
+        _mm256_extracti128_si256(red32, 1));
+    __m128i green16 = _mm_packs_epi32(
+        _mm256_castsi256_si128(green32),
+        _mm256_extracti128_si256(green32, 1));
+    __m128i blue16 = _mm_packs_epi32(
+        _mm256_castsi256_si128(blue32),
+        _mm256_extracti128_si256(blue32, 1));
+    __m128i red8 = _mm_packus_epi16(red16, red16);
+    __m128i green8 = _mm_packus_epi16(green16, green16);
+    __m128i blue8 = _mm_packus_epi16(blue16, blue16);
+
+    const __m128i red_first = _mm_setr_epi8(
+         0,-1,-1, 1,-1,-1, 2,-1,-1, 3,-1,-1, 4,-1,-1, 5);
+    const __m128i green_first = _mm_setr_epi8(
+        -1, 0,-1,-1, 1,-1,-1, 2,-1,-1, 3,-1,-1, 4,-1,-1);
+    const __m128i blue_first = _mm_setr_epi8(
+        -1,-1, 0,-1,-1, 1,-1,-1, 2,-1,-1, 3,-1,-1, 4,-1);
+    const __m128i red_second = _mm_setr_epi8(
+        -1,-1, 6,-1,-1, 7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1);
+    const __m128i green_second = _mm_setr_epi8(
+         5,-1,-1, 6,-1,-1, 7,-1,-1,-1,-1,-1,-1,-1,-1,-1);
+    const __m128i blue_second = _mm_setr_epi8(
+        -1, 5,-1,-1, 6,-1,-1, 7,-1,-1,-1,-1,-1,-1,-1,-1);
+
+    __m128i first = _mm_or_si128(
+        _mm_or_si128(_mm_shuffle_epi8(red8, red_first),
+                     _mm_shuffle_epi8(green8, green_first)),
+        _mm_shuffle_epi8(blue8, blue_first));
+    __m128i second = _mm_or_si128(
+        _mm_or_si128(_mm_shuffle_epi8(red8, red_second),
+                     _mm_shuffle_epi8(green8, green_second)),
+        _mm_shuffle_epi8(blue8, blue_second));
+    _mm_storeu_si128((__m128i *)output, first);
+    _mm_storel_epi64((__m128i *)(output + 16), second);
+}
+
+__attribute__((target("avx2,fma"), always_inline))
+static inline void convert_ycbcr8_fma(const unsigned char *luma,
+                                      __m128i blue, __m128i red,
+                                      unsigned char *output) {
+    const __m256 inverse =
+        _mm256_set1_ps(1.0f / (1 << CHROMA_SHIFT));
+    const __m256 half = _mm256_set1_ps(128.0f);
+    const __m256 k_r_cr = _mm256_set1_ps(1.402f);
+    const __m256 k_b_cb = _mm256_set1_ps(1.772f);
+
+    __m128i y8 = _mm_loadl_epi64((const __m128i *)luma);
+    __m256 yf = _mm256_cvtepi32_ps(_mm256_cvtepu8_epi32(y8));
+    __m256 cbf = _mm256_sub_ps(
+        _mm256_mul_ps(
+            _mm256_cvtepi32_ps(_mm256_cvtepu16_epi32(blue)), inverse),
+        half);
+    __m256 crf = _mm256_sub_ps(
+        _mm256_mul_ps(
+            _mm256_cvtepi32_ps(_mm256_cvtepu16_epi32(red)), inverse),
+        half);
+
+    __m256 red_result = _mm256_fmadd_ps(crf, k_r_cr, yf);
+    __m256 blue_result = _mm256_fmadd_ps(cbf, k_b_cb, yf);
+    finish_ycbcr8_avx2(
+        yf, cbf, crf, red_result, blue_result, output);
+}
+
+__attribute__((target("avx2,fma")))
+static void ycbcr_row_fma(const unsigned char *luma,
+                          const unsigned short *blue,
+                          const unsigned short *red,
+                          unsigned char *output, int count) {
+    int i = 0;
+    for (; i + 8 <= count; i += 8) {
+        __m128i cb16 =
+            _mm_loadu_si128((const __m128i *)(blue + i));
+        __m128i cr16 =
+            _mm_loadu_si128((const __m128i *)(red + i));
+        convert_ycbcr8_fma(
+            luma + i, cb16, cr16, output + i * 3);
+    }
+
+    // Keep the rare tail on the non-FMA implementation: fusing the green
+    // channel changes a handful of exact half-way rounding cases.
+    if (i < count) {
+        ycbcr_row_avx2(luma + i, blue + i, red + i,
+                       output + i * 3, count - i);
+    }
+}
+
 #endif
 
 static void ycbcr_to_rgb(const unsigned char *y,
@@ -621,14 +919,98 @@ static void ycbcr_to_rgb(const unsigned char *y,
                          const unsigned short *cr,
                          unsigned char *output,
                          int count) {
-    int converted = 0;
 #if defined(__x86_64__) || defined(__i386__)
-    if (n148_cpu_level() >= N148_CPU_AVX2) {
-        converted = ycbcr_to_rgb_avx2(y, cb, cr, output, count);
+    int level = n148_cpu_level();
+    if (level >= N148_CPU_AVX2_FMA) {
+        ycbcr_row_fma(y, cb, cr, output, count);
+        return;
+    }
+    if (level >= N148_CPU_AVX2) {
+        ycbcr_row_avx2(y, cb, cr, output, count);
+        return;
     }
 #endif
-    ycbcr_to_rgb_scalar(y + converted, cb + converted, cr + converted,
-                        output + converted * 3, count - converted);
+    ycbcr_to_rgb_scalar(y, cb, cr, output, count);
+}
+
+typedef struct {
+    Plane *y;
+    Plane *cb;
+    Plane *cr;
+    Image *output;
+    int width;
+    int smooth;
+    int stretch_x;
+    int stretch_y;
+    int use_avx2;
+    double scale_x;
+    double scale_y;
+    int failed;
+} MergeJob;
+
+static void merge_rows(long start, long end, int worker, void *context) {
+    (void)worker;
+    MergeJob *job = (MergeJob *)context;
+
+#define MERGE_STACK_WIDTH 2048
+    _Alignas(32) unsigned short stack_rows[MERGE_STACK_WIDTH * 3];
+    unsigned short *allocated = NULL;
+    unsigned short *row_cb;
+    if (job->width <= MERGE_STACK_WIDTH &&
+        job->cb->width <= MERGE_STACK_WIDTH) {
+        row_cb = stack_rows;
+    } else {
+        size_t values = (size_t)job->width * 2 + job->cb->width;
+        allocated = (unsigned short *)malloc(
+            values * sizeof(unsigned short));
+        if (!allocated) {
+#if defined(__GNUC__) || defined(__clang__)
+            __atomic_store_n(&job->failed, 1, __ATOMIC_RELAXED);
+#else
+            job->failed = 1;
+#endif
+            return;
+        }
+        row_cb = allocated;
+    }
+    unsigned short *row_cr = row_cb + job->width;
+    unsigned short *vertical = row_cr + job->width;
+
+    for (long pixel_y = start; pixel_y < end; pixel_y++) {
+        if (job->smooth) {
+#if defined(__x86_64__) || defined(__i386__)
+            if (job->use_avx2) {
+                expand_chroma_row_avx2(
+                    job->cb, (int)pixel_y, job->width,
+                    job->stretch_x, job->stretch_y, row_cb, vertical);
+                expand_chroma_row_avx2(
+                    job->cr, (int)pixel_y, job->width,
+                    job->stretch_x, job->stretch_y, row_cr, vertical);
+            } else
+#endif
+            {
+                expand_chroma_row(job->cb, (int)pixel_y, job->width,
+                                  job->stretch_x, job->stretch_y, row_cb);
+                expand_chroma_row(job->cr, (int)pixel_y, job->width,
+                                  job->stretch_x, job->stretch_y, row_cr);
+            }
+        } else {
+            expand_nearest_chroma_row(
+                job->cb, (int)pixel_y, job->width,
+                job->scale_x, job->scale_y, row_cb);
+            expand_nearest_chroma_row(
+                job->cr, (int)pixel_y, job->width,
+                job->scale_x, job->scale_y, row_cr);
+        }
+
+        ycbcr_to_rgb(job->y->data + pixel_y * job->width,
+                     row_cb, row_cr,
+                     job->output->pixels + pixel_y * job->width * 3,
+                     job->width);
+    }
+
+    free(allocated);
+#undef MERGE_STACK_WIDTH
 }
 
 int merge_channels(Plane *y, Plane *cb, Plane *cr,
@@ -649,43 +1031,28 @@ int merge_channels(Plane *y, Plane *cb, Plane *cr,
         return 0;
     }
 
-    unsigned short *row_cb = (unsigned short *)malloc(
-        (size_t)width * sizeof(unsigned short));
-    unsigned short *row_cr = (unsigned short *)malloc(
-        (size_t)width * sizeof(unsigned short));
-    if (!row_cb || !row_cr) {
-        free(row_cb);
-        free(row_cr);
-        free(output->pixels);
-        output->pixels = NULL;
-        return 0;
-    }
-
     double scale_x = (double)cb->width / width;
     double scale_y = (double)cb->height / height;
     int stretch_x = cb->width != width;
     int stretch_y = cb->height != height;
-
-    for (int pixel_y = 0; pixel_y < height; pixel_y++) {
-        if (smooth) {
-            expand_chroma_row(cb, pixel_y, width,
-                              stretch_x, stretch_y, row_cb);
-            expand_chroma_row(cr, pixel_y, width,
-                              stretch_x, stretch_y, row_cr);
-        } else {
-            expand_nearest_chroma_row(cb, pixel_y, width,
-                                      scale_x, scale_y, row_cb);
-            expand_nearest_chroma_row(cr, pixel_y, width,
-                                      scale_x, scale_y, row_cr);
-        }
-
-        ycbcr_to_rgb(y->data + (long)pixel_y * width,
-                     row_cb, row_cr,
-                     output->pixels + (long)pixel_y * width * 3,
-                     width);
+    int level = n148_cpu_level();
+    int regular_x = !stretch_x || cb->width == (width + 1) / 2;
+    int regular_y = !stretch_y || cb->height == (height + 1) / 2;
+    MergeJob job = {
+        y, cb, cr, output, width, smooth, stretch_x, stretch_y,
+        level >= N148_CPU_AVX2 && regular_x && regular_y,
+        scale_x, scale_y, 0
+    };
+    n148_parallel_for(height, merge_rows, &job);
+#if defined(__GNUC__) || defined(__clang__)
+    int failed = __atomic_load_n(&job.failed, __ATOMIC_RELAXED);
+#else
+    int failed = job.failed;
+#endif
+    if (failed) {
+        free(output->pixels);
+        output->pixels = NULL;
+        return 0;
     }
-
-    free(row_cb);
-    free(row_cr);
     return 1;
 }

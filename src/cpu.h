@@ -4,6 +4,7 @@
 #define N148_CPU_BASELINE 0
 #define N148_CPU_SSE2 1
 #define N148_CPU_AVX2 2
+#define N148_CPU_AVX2_FMA 3
 
 // Returns the best SIMD level supported by both the CPU and the OS.
 int n148_cpu_level(void);

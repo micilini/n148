@@ -31,6 +31,7 @@ static int detect(void) {
     unsigned int registers[4];
     cpuid_count(1, 0, registers);
     int has_sse2 = (int)((registers[3] >> 26) & 1);
+    int has_fma = (int)((registers[2] >> 12) & 1);
     int has_osxsave = (int)((registers[2] >> 27) & 1);
     int has_avx = (int)((registers[2] >> 28) & 1);
 
@@ -41,7 +42,7 @@ static int detect(void) {
     }
 
     if (has_avx2 && has_avx && has_osxsave && os_supports_avx()) {
-        return N148_CPU_AVX2;
+        return has_fma ? N148_CPU_AVX2_FMA : N148_CPU_AVX2;
     }
     if (has_sse2) {
         return N148_CPU_SSE2;

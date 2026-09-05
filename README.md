@@ -17,7 +17,7 @@ The project is split into two planned formats:
 | **N.148i** | Static images such as photographs, illustrations, and screenshots | `.n148i` |
 | **N.148v** | Video streams and moving images | To be defined |
 
-The current milestone applies runtime-dispatched AVX2 to the codec's main per-pixel and per-block hot paths: color conversion, quantization, block loading, and the Arai-Agui-Nakajima (AAN) transforms.
+The current milestone completes the optimization cycle with a small pthread-based parallel runner, sparse inverse transforms, vectorized chroma reconstruction, fused 4:2:0 color conversion, batched entropy symbols, and runtime-dispatched AVX2/FMA paths.
 
 ---
 
@@ -35,13 +35,13 @@ RGB → fixed-point YCbCr                  Huffman decoding
     ↓                                         ↓
 8 × 8 blocks + vector loads              Inverse zig-zag
     ↓                                         ↓
-AAN DCT → AVX2 quantization              Scaled dequantization → AAN IDCT
+AAN DCT → AVX2 quantization              Scaled dequantization → sparse/full IDCT
     ↓                                         ↓
 Zig-zag → RLE → optimized Huffman        Block reconstruction
     ↓                                         ↓
 Header + tables + bitstream              Bilinear chroma upsampling
                                               ↓
-                                         Fixed-point YCbCr → RGB
+                                         FMA/fixed-point YCbCr → RGB
                                               ↓
                                          Decoded P6 PPM
 ```
@@ -50,10 +50,18 @@ The decoder reverses the encoder in the exact opposite order. Plane ordering is 
 
 ---
 
-## Current SIMD optimization milestone
+## Parallel and final optimization milestone
 
 This milestone adds:
 
+- a pthread-based parallel loop that divides independent rows into contiguous slices, lets the calling thread process the first slice, and runs tiny jobs inline;
+- parallel color conversion, chroma subsampling, DCT/quantization, private Huffman-frequency counting with a final reduction, and RGB reconstruction;
+- intentionally sequential entropy writing/reading and DC prediction, whose ordering is part of the format;
+- direct sparse AVX2 IDCT reconstruction for blocks with one, two, or three surviving AC coefficients;
+- AVX2 vertical blending and horizontal 9:3:3:1 chroma stretching, processing 16 samples per pass;
+- an AVX2/FMA inverse color path selected by a new CPU capability level;
+- fused 4:2:0 conversion and subsampling that processes two source rows while they are still cache-hot;
+- batched AC Huffman writing with separate sparse and dense paths;
 - runtime CPU detection with CPUID and operating-system AVX state checks;
 - portable scalar fallback on processors without AVX2;
 - AVX2 AAN forward and inverse transforms that process eight columns together;
@@ -63,7 +71,7 @@ This milestone adds:
 - per-function AVX2 targeting, so the rest of the binary keeps its baseline ISA;
 - a test override for comparing scalar and vector paths in the same binary.
 
-The N.148i format, compressed bytes, and reconstructed pixels remain unchanged between the scalar and AVX2 paths. Compared with the previous double-precision color conversion, fixed-point rounding can move a few source-dependent compressed bits without changing measured reconstruction quality.
+The N.148i format and compressed bytes remain unchanged across worker counts and CPU paths. The scalar and plain AVX2 paths also reconstruct identical pixels. FMA can move a handful of exact half-way color-rounding cases by one byte, while preserving the measured reconstruction quality.
 
 ---
 
@@ -74,10 +82,11 @@ Encoder and decoder correctness depends on both sides using identical tables and
 - `tables.c` owns quantization tables, zig-zag order, Huffman definitions, and quality scaling;
 - `huffman.c` builds, validates, serializes, and reads canonical Huffman specifications;
 - `cpu.c` detects the SIMD level supported by both the processor and operating system;
+- `parallel.c` divides independent row ranges among pthread workers and joins them before returning;
 - `dct.c` owns the scalar and AVX2 AAN forward and inverse passes;
-- `ppm.c` owns scalar and AVX2 fixed-point color separation before chroma subsampling;
-- `encoder.c` folds AAN scaling into reciprocal quantization tables, loads complete blocks with AVX2, and quantizes contiguously before zig-zag ordering;
-- `decoder.c` folds AAN scaling and inverse normalization into dequantization tables, upsamples chroma, and rebuilds interleaved RGB with scalar or AVX2 fixed-point conversion.
+- `ppm.c` owns scalar and AVX2 fixed-point color separation, including the fused parallel 4:2:0 path;
+- `encoder.c` transforms block rows in parallel, reduces private symbol counts, and keeps ordered DC/bitstream writing sequential;
+- `decoder.c` owns sparse IDCT dispatch, vectorized chroma upsampling, parallel row reconstruction, and scalar/AVX2/FMA inverse color conversion.
 
 This prevents a table change on one side from silently making newly encoded files incompatible with the decoder.
 
@@ -132,9 +141,10 @@ n148/
 │   ├── tables.h/.c     # Shared quantization, zig-zag, and Huffman tables
 │   ├── huffman.h/.c    # Optimized Huffman construction and table I/O
 │   ├── cpu.h/.c        # Runtime SIMD capability detection
+│   ├── parallel.h/.c   # Contiguous pthread worker ranges
 │   ├── dct.h/.c        # Scalar and AVX2 AAN forward and inverse DCT
-│   ├── encoder.h/.c    # SIMD block loading, quantization, and entropy pipeline
-│   └── decoder.h/.c    # Reverse pipeline and scalar/AVX2 RGB reconstruction
+│   ├── encoder.h/.c    # Parallel transform/reduction and entropy pipeline
+│   └── decoder.h/.c    # Sparse IDCT and parallel AVX2/FMA reconstruction
 ├── images/
 │   └── example.ppm     # Official 320 × 240 Micilini fixture
 ├── output/
@@ -154,14 +164,15 @@ n148/
 
 - A C compiler with C11 support, such as GCC or Clang
 - The standard C math library
+- POSIX threads on Unix-like systems
 - No third-party codec libraries
 
 From the `src/` directory:
 
 ```bash
 gcc -std=c11 -Wall -Wextra -Wpedantic \
-  main.c cpu.c header.c ppm.c tables.c dct.c huffman.c encoder.c decoder.c \
-  -o n148i -lm -O2
+  main.c cpu.c parallel.c header.c ppm.c tables.c dct.c huffman.c \
+  encoder.c decoder.c -o n148i -lm -pthread -O2
 ./n148i
 ```
 
@@ -205,11 +216,11 @@ Quality can be overridden at compile time without editing the source:
 
 ```bash
 gcc -std=c11 -Wall -Wextra -Wpedantic -DQUALITY=90 \
-  main.c cpu.c header.c ppm.c tables.c dct.c huffman.c encoder.c decoder.c \
-  -o n148i -lm -O2
+  main.c cpu.c parallel.c header.c ppm.c tables.c dct.c huffman.c \
+  encoder.c decoder.c -o n148i -lm -pthread -O2
 ```
 
-The other compile-time controls are `CHROMA_MODE` (`0`, `1`, or `2`), `OPTIMIZE` (`0` or `1`), and `SMOOTH_UPSAMPLING` (`0` or `1`). With quality 50, optimized tables, and bilinear upsampling, the official fixture reproduces the article's chroma matrix:
+The other compile-time controls are `CHROMA_MODE` (`0`, `1`, or `2`), `OPTIMIZE` (`0` or `1`), and `SMOOTH_UPSAMPLING` (`0` or `1`). `N148_WORKERS` can pin a positive worker count for repeatable scaling tests; otherwise the parallel runner uses the online processor count. With quality 50, optimized tables, and bilinear upsampling, the official fixture reproduces the article's chroma matrix:
 
 | Chroma | N.148i size | PSNR |
 | ---: | ---: | ---: |
@@ -243,8 +254,8 @@ Compile with strict warnings and runtime sanitizers:
 ```bash
 gcc -std=c11 -Wall -Wextra -Wpedantic -Werror \
   -fsanitize=address,undefined -fno-omit-frame-pointer \
-  main.c cpu.c header.c ppm.c tables.c dct.c huffman.c encoder.c decoder.c \
-  -o /tmp/n148i-sanitized -lm -O2
+  main.c cpu.c parallel.c header.c ppm.c tables.c dct.c huffman.c \
+  encoder.c decoder.c -o /tmp/n148i-sanitized -lm -pthread -O2
 ```
 
 Important invariants for the reference round trip:
@@ -257,18 +268,19 @@ Important invariants for the reference round trip:
 - quality-50 reconstruction measures 34.70 dB PSNR;
 - normalized AAN coefficients match the separable DCT within floating-point tolerance;
 - AAN DCT followed by AAN IDCT reproduces unquantized blocks within floating-point tolerance;
-- scalar and AVX2 transforms, color conversion, quantization, and block loading produce byte-identical compressed and reconstructed output;
+- scalar and AVX2 transforms, color conversion, quantization, upsampling, and sparse reconstruction produce byte-identical compressed and reconstructed output;
+- one worker and multiple workers produce byte-identical compressed and reconstructed output;
+- ThreadSanitizer reports no shared-counter or output-slice races;
 - partial edge blocks and odd image dimensions preserve the original dimensions.
 
 ---
 
 ## Current limitations
 
-The optimized learning round trip works, but several improvements remain:
+The optimized learning round trip works, with these known boundaries:
 
-- optimized Huffman mode still transforms every block twice, once to count symbols and once to write them;
-- Huffman codes are still written one bit at a time;
-- AC tokenization still examines all 63 coefficient positions;
+- entropy writing, entropy reading, and each plane's DC predictor chain remain sequential by construction, limiting parallel speedup according to Amdahl's law;
+- work is divided into equal slices, which can underuse performance cores when a processor mixes fast and efficiency cores;
 - optimized Huffman tables can cost more than they save for very small images, so callers must choose the appropriate mode;
 - quality evaluation currently reports PSNR but not SSIM or VMAF;
 - N.148i is a custom format and is not intended to be opened by JPEG viewers.

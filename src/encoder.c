@@ -7,6 +7,7 @@
 #include "dct.h"
 #include "encoder.h"
 #include "huffman.h"
+#include "parallel.h"
 #include "tables.h"
 
 #if defined(__x86_64__) || defined(__i386__)
@@ -14,8 +15,8 @@
 #endif
 
 typedef struct {
-    int code[256];
-    int length[256];
+    unsigned int code[256];
+    unsigned char length[256];
 } HuffTable;
 
 static void build_huffman(const HuffSpec *spec, HuffTable *table) {
@@ -30,7 +31,7 @@ static void build_huffman(const HuffSpec *spec, HuffTable *table) {
         for (int i = 0; i < spec->bits[length]; i++) {
             unsigned char symbol = spec->values[value_index++];
             table->code[symbol] = code;
-            table->length[symbol] = length;
+            table->length[symbol] = (unsigned char)length;
             code++;
         }
         code <<= 1;
@@ -159,15 +160,6 @@ static int amplitude(int value, int size) {
     return (value < 0) ? ((value - 1) & mask) : (value & mask);
 }
 
-// Both passes consume the exact same token stream. Pass one only counts
-// symbols; pass two writes the symbol and its amplitude bits.
-typedef struct {
-    int symbol;
-    int extra_bits;
-    int extra_value;
-    int is_dc;
-} Token;
-
 // The fast transform leaves every coefficient multiplied by a known
 // constant. Rather than dividing it back out on every block, the
 // constant is folded into the quantization table once, at startup.
@@ -217,24 +209,32 @@ static void quantize_block_avx2(const float coefficients[64],
 
 #endif
 
-static void quantize_block(const float block[64],
-                           const ScaledQuant *quantization,
-                           short zigzag[64]) {
+static uint64_t quantize_block(const float block[64],
+                               const ScaledQuant *quantization,
+                               short zigzag[64]) {
     float coefficients[64];
     dct_block_fast(block, coefficients);
 
 #if defined(__x86_64__) || defined(__i386__)
     if (n148_cpu_level() >= N148_CPU_AVX2) {
         quantize_block_avx2(coefficients, quantization->reciprocal, zigzag);
-        return;
-    }
+    } else
 #endif
-
-    for (int i = 0; i < 64; i++) {
-        int index = ZIGZAG[i];
-        zigzag[i] = (short)lrintf(
-            coefficients[index] * quantization->reciprocal[index]);
+    {
+        for (int i = 0; i < 64; i++) {
+            int index = ZIGZAG[i];
+            zigzag[i] = (short)lrintf(
+                coefficients[index] * quantization->reciprocal[index]);
+        }
     }
+
+    uint64_t nonzero = 0;
+    for (int i = 1; i < 64; i++) {
+        if (zigzag[i] != 0) {
+            nonzero |= UINT64_C(1) << i;
+        }
+    }
+    return nonzero;
 }
 
 // ============================================================
@@ -248,6 +248,7 @@ static void quantize_block(const float block[64],
 
 typedef struct {
     short *coefficients;    // 64 values per block, zig-zag order
+    uint64_t *nonzero;      // AC positions that survived quantization
     long   count;
 } CoeffCache;
 
@@ -268,29 +269,57 @@ static void load_block_avx2(const unsigned char *source, int stride,
 
 #endif
 
-static int cache_fill(CoeffCache *cache, Plane *plane,
-                      const ScaledQuant *quantization) {
-    int blocks_x = (plane->width + 7) / 8;
-    int blocks_y = (plane->height + 7) / 8;
-    long total = (long)blocks_x * blocks_y;
+static int count_ac_frequencies(const short *zigzag, uint64_t mask,
+                                long frequencies[256]) {
+    int previous = 0;
+    while (mask) {
+        int position = __builtin_ctzll(mask);
+        int run = position - previous - 1;
+        while (run > 15) {
+            frequencies[0xF0]++;
+            run -= 16;
+        }
 
-    cache->count = total;
-    cache->coefficients = (short *)malloc((size_t)total * 64 * sizeof(short));
-    if (!cache->coefficients) {
-        return 0;
+        int size = category(zigzag[position]);
+        if (size > 15) {
+            return 0;
+        }
+        frequencies[(run << 4) | size]++;
+        previous = position;
+        mask &= mask - 1;
     }
+    if (previous < 63) {
+        frequencies[0x00]++;
+    }
+    return 1;
+}
 
-    long index = 0;
-    for (int block_y = 0; block_y < blocks_y; block_y++) {
-        for (int block_x = 0; block_x < blocks_x; block_x++, index++) {
+typedef struct {
+    CoeffCache *cache;
+    Plane *plane;
+    const ScaledQuant *quantization;
+    int blocks_x;
+    int use_avx2;
+    int failed;
+    long (*ac_freq)[256];
+} QuantJob;
+
+// Handles one horizontal band of blocks. Bands never overlap, so workers
+// write to disjoint slices of the coefficient and nonzero-mask buffers.
+static void quantize_rows(long start, long end, int worker, void *context) {
+    QuantJob *job = (QuantJob *)context;
+    Plane *plane = job->plane;
+
+    for (long block_y = start; block_y < end; block_y++) {
+        for (int block_x = 0; block_x < job->blocks_x; block_x++) {
+            long index = block_y * job->blocks_x + block_x;
             float block[64];
             int interior = (block_x + 1) * 8 <= plane->width &&
                            (block_y + 1) * 8 <= plane->height;
 #if defined(__x86_64__) || defined(__i386__)
-            if (interior && n148_cpu_level() >= N148_CPU_AVX2) {
+            if (interior && job->use_avx2) {
                 load_block_avx2(
-                    plane->data + (long)(block_y * 8) * plane->width +
-                        block_x * 8,
+                    plane->data + block_y * 8 * plane->width + block_x * 8,
                     plane->width, block);
             } else
 #endif
@@ -298,115 +327,258 @@ static int cache_fill(CoeffCache *cache, Plane *plane,
                 for (int row = 0; row < 8; row++) {
                     for (int column = 0; column < 8; column++) {
                         block[row * 8 + column] = (float)plane_sample(
-                            plane, block_x * 8 + column, block_y * 8 + row);
+                            plane, block_x * 8 + column,
+                            (int)block_y * 8 + row);
                     }
                 }
             }
-            quantize_block(block, quantization,
-                           &cache->coefficients[index * 64]);
+
+            short *zigzag = &job->cache->coefficients[index * 64];
+            uint64_t mask = quantize_block(block, job->quantization, zigzag);
+            job->cache->nonzero[index] = mask;
+            if (job->ac_freq &&
+                !count_ac_frequencies(zigzag, mask, job->ac_freq[worker])) {
+#if defined(__GNUC__) || defined(__clang__)
+                __atomic_store_n(&job->failed, 1, __ATOMIC_RELAXED);
+#else
+                job->failed = 1;
+#endif
+            }
         }
+    }
+}
+
+static int cache_fill(CoeffCache *cache, Plane *plane,
+                      const ScaledQuant *quantization,
+                      long (*ac_freq)[256]) {
+    int blocks_x = (plane->width + 7) / 8;
+    int blocks_y = (plane->height + 7) / 8;
+    long total = (long)blocks_x * blocks_y;
+
+    cache->count = total;
+    cache->coefficients = (short *)malloc((size_t)total * 64 * sizeof(short));
+    cache->nonzero = (uint64_t *)malloc((size_t)total * sizeof(uint64_t));
+    if (!cache->coefficients || !cache->nonzero) {
+        free(cache->coefficients);
+        free(cache->nonzero);
+        cache->coefficients = NULL;
+        cache->nonzero = NULL;
+        return 0;
+    }
+
+    QuantJob job = {
+        cache, plane, quantization, blocks_x,
+        n148_cpu_level() >= N148_CPU_AVX2, 0, ac_freq
+    };
+    n148_parallel_for(blocks_y, quantize_rows, &job);
+#if defined(__GNUC__) || defined(__clang__)
+    int failed = __atomic_load_n(&job.failed, __ATOMIC_RELAXED);
+#else
+    int failed = job.failed;
+#endif
+    if (failed) {
+        free(cache->coefficients);
+        free(cache->nonzero);
+        cache->coefficients = NULL;
+        cache->nonzero = NULL;
+        return 0;
     }
     return 1;
 }
 
 static void cache_free(CoeffCache *cache) {
     free(cache->coefficients);
+    free(cache->nonzero);
     cache->coefficients = NULL;
+    cache->nonzero = NULL;
     cache->count = 0;
-}
-
-static int tokenize_block(const short zigzag[64],
-                          int *previous_dc, Token tokens[64]) {
-    // DC: differential pulse-code modulation.
-    int difference = zigzag[0] - *previous_dc;
-    *previous_dc = zigzag[0];
-    int size = category(difference);
-    if (size > 15) {
-        return -1;
-    }
-    int token_count = 0;
-    tokens[token_count++] = (Token){
-        size, size, amplitude(difference, size), 1
-    };
-
-    // AC: (run, size) symbol followed by the amplitude.
-    int run = 0;
-    for (int i = 1; i < 64; i++) {
-        if (zigzag[i] == 0) {
-            run++;
-            continue;
-        }
-
-        while (run > 15) {
-            tokens[token_count++] = (Token){0xF0, 0, 0, 0};
-            run -= 16;
-        }
-
-        size = category(zigzag[i]);
-        if (size > 15 || token_count >= 64) {
-            return -1;
-        }
-        int symbol = (run << 4) | size;
-        tokens[token_count++] = (Token){
-            symbol, size, amplitude(zigzag[i], size), 0
-        };
-        run = 0;
-    }
-
-    if (run > 0) {
-        if (token_count >= 64) {
-            return -1;
-        }
-        tokens[token_count++] = (Token){0x00, 0, 0, 0};
-    }
-
-    return token_count;
 }
 
 // ============================================================
 // PROCESS A WHOLE COEFFICIENT CACHE, BLOCK BY BLOCK
 // ============================================================
 
+typedef struct {
+    unsigned int bits;
+    int count;
+} AcBitBatch;
+
+static inline void ac_batch_flush(BitWriter *writer, AcBitBatch *batch) {
+    if (batch->count > 0) {
+        bw_write_bits(writer, batch->bits, batch->count);
+        batch->bits = 0;
+        batch->count = 0;
+    }
+}
+
+static inline void ac_batch_put(BitWriter *writer, AcBitBatch *batch,
+                                unsigned int value, int count) {
+    if (batch->count > 0 && batch->count + count > 32) {
+        ac_batch_flush(writer, batch);
+    }
+
+    if (batch->count == 0) {
+        batch->bits = value;
+        batch->count = count;
+    } else {
+        batch->bits = (batch->bits << count) | value;
+        batch->count += count;
+    }
+}
+
+static inline void write_ac_sparse(BitWriter *writer, const short *zigzag,
+                                   uint64_t mask,
+                                   const HuffTable *ac_table) {
+    int previous = 0;
+    while (mask) {
+        int position = __builtin_ctzll(mask);
+        int run = position - previous - 1;
+        while (run > 15) {
+            int length = ac_table->length[0xF0];
+            if (length == 0) {
+                writer->failed = 1;
+                return;
+            }
+            bw_write_bits(writer, ac_table->code[0xF0], length);
+            run -= 16;
+        }
+
+        int value = zigzag[position];
+        int coefficient_size = category(value);
+        if (coefficient_size > 15) {
+            writer->failed = 1;
+            return;
+        }
+        int symbol = (run << 4) | coefficient_size;
+        int length = ac_table->length[symbol];
+        if (length == 0) {
+            writer->failed = 1;
+            return;
+        }
+        bw_write_bits(writer,
+                      (ac_table->code[symbol] << coefficient_size) |
+                          (unsigned int)amplitude(value, coefficient_size),
+                      length + coefficient_size);
+        previous = position;
+        mask &= mask - 1;
+    }
+    if (previous < 63) {
+        int length = ac_table->length[0x00];
+        if (length == 0) {
+            writer->failed = 1;
+            return;
+        }
+        bw_write_bits(writer, ac_table->code[0x00], length);
+    }
+}
+
+static inline void write_ac_dense(BitWriter *writer, const short *zigzag,
+                                  uint64_t mask,
+                                  const HuffTable *ac_table) {
+    AcBitBatch batch = {0, 0};
+    int previous = 0;
+    while (mask) {
+        int position = __builtin_ctzll(mask);
+        int run = position - previous - 1;
+        while (run > 15) {
+            int length = ac_table->length[0xF0];
+            if (length == 0) {
+                writer->failed = 1;
+                return;
+            }
+            ac_batch_put(writer, &batch, ac_table->code[0xF0], length);
+            run -= 16;
+        }
+
+        int value = zigzag[position];
+        int coefficient_size = category(value);
+        if (coefficient_size > 15) {
+            writer->failed = 1;
+            return;
+        }
+        int symbol = (run << 4) | coefficient_size;
+        int length = ac_table->length[symbol];
+        if (length == 0) {
+            writer->failed = 1;
+            return;
+        }
+        ac_batch_put(writer, &batch,
+                     (ac_table->code[symbol] << coefficient_size) |
+                         (unsigned int)amplitude(value, coefficient_size),
+                     length + coefficient_size);
+        previous = position;
+        mask &= mask - 1;
+    }
+    if (previous < 63) {
+        int length = ac_table->length[0x00];
+        if (length == 0) {
+            writer->failed = 1;
+            return;
+        }
+        ac_batch_put(writer, &batch, ac_table->code[0x00], length);
+    }
+    ac_batch_flush(writer, &batch);
+}
+
+static int count_dc_frequencies(const CoeffCache *cache,
+                                long frequencies[256]) {
+    int previous_dc = 0;
+    for (long block = 0; block < cache->count; block++) {
+        const short *zigzag = &cache->coefficients[block * 64];
+        int difference = zigzag[0] - previous_dc;
+        previous_dc = zigzag[0];
+        int size = category(difference);
+        if (size > 15) {
+            return 0;
+        }
+        frequencies[size]++;
+    }
+    return 1;
+}
+
+static void reduce_ac_frequencies(long destination[256],
+                                  long (*workers)[256]) {
+    for (int worker = 0; worker < N148_MAX_WORKERS; worker++) {
+        for (int symbol = 0; symbol < 256; symbol++) {
+            destination[symbol] += workers[worker][symbol];
+        }
+    }
+}
+
 static long process_cache(const CoeffCache *cache,
                           int dc_table_index, int ac_table_index,
-                          long frequencies[HUFFMAN_TABLE_COUNT][256],
                           BitWriter *writer,
                           HuffTable tables[HUFFMAN_TABLE_COUNT]) {
     int previous_dc = 0;
 
     for (long block = 0; block < cache->count; block++) {
-        Token tokens[64];
-        int token_count = tokenize_block(
-            &cache->coefficients[block * 64], &previous_dc, tokens);
-        if (token_count < 0) {
+        const short *zigzag = &cache->coefficients[block * 64];
+        int difference = zigzag[0] - previous_dc;
+        previous_dc = zigzag[0];
+        int dc_size = category(difference);
+        if (dc_size > 15) {
             return -1;
         }
 
-        for (int i = 0; i < token_count; i++) {
-            Token *token = &tokens[i];
-            int table_index = token->is_dc
-                ? dc_table_index : ac_table_index;
+        HuffTable *dc_table = &tables[dc_table_index];
+        int dc_length = dc_table->length[dc_size];
+        if (dc_length == 0) {
+            writer->failed = 1;
+            return -1;
+        }
+        bw_write_bits(writer,
+                      (dc_table->code[dc_size] << dc_size) |
+                          (unsigned int)amplitude(difference, dc_size),
+                      dc_length + dc_size);
 
-            if (frequencies) {
-                frequencies[table_index][token->symbol]++;
-                continue;
-            }
-
-            HuffTable *table = &tables[table_index];
-            int length = table->length[token->symbol];
-            if (length == 0) {
-                writer->failed = 1;
-                return -1;
-            }
-            bw_write_bits(writer, (unsigned int)table->code[token->symbol],
-                          length);
-            if (token->extra_bits > 0) {
-                bw_write_bits(writer, (unsigned int)token->extra_value,
-                              token->extra_bits);
-            }
-            if (writer->failed) {
-                return -1;
-            }
+        uint64_t mask = cache->nonzero[block];
+        if (__builtin_popcountll(mask) <= 8) {
+            write_ac_sparse(writer, zigzag, mask, &tables[ac_table_index]);
+        } else {
+            write_ac_dense(writer, zigzag, mask, &tables[ac_table_index]);
+        }
+        if (writer->failed) {
+            return -1;
         }
     }
 
@@ -441,29 +613,46 @@ int encode_image(Plane *y, Plane *cb, Plane *cr, int quality, int optimize,
     CoeffCache cache_y = {0};
     CoeffCache cache_cb = {0};
     CoeffCache cache_cr = {0};
-    if (!cache_fill(&cache_y, y, &scaled_luma) ||
-        !cache_fill(&cache_cb, cb, &scaled_chroma) ||
-        !cache_fill(&cache_cr, cr, &scaled_chroma)) {
+    long (*luma_ac)[256] = NULL;
+    long (*chroma_ac)[256] = NULL;
+    if (optimize) {
+        luma_ac = (long (*)[256])calloc(N148_MAX_WORKERS,
+                                        sizeof(*luma_ac));
+        chroma_ac = (long (*)[256])calloc(N148_MAX_WORKERS,
+                                          sizeof(*chroma_ac));
+        if (!luma_ac || !chroma_ac) {
+            free(luma_ac);
+            free(chroma_ac);
+            return 0;
+        }
+    }
+
+    if (!cache_fill(&cache_y, y, &scaled_luma, luma_ac) ||
+        !cache_fill(&cache_cb, cb, &scaled_chroma, chroma_ac) ||
+        !cache_fill(&cache_cr, cr, &scaled_chroma, chroma_ac)) {
         cache_free(&cache_y);
         cache_free(&cache_cb);
         cache_free(&cache_cr);
+        free(luma_ac);
+        free(chroma_ac);
         return 0;
     }
 
     if (optimize) {
         long frequencies[HUFFMAN_TABLE_COUNT][256] = {{0}};
-        if (process_cache(&cache_y,
-                          HUFFMAN_DC_LUMA, HUFFMAN_AC_LUMA,
-                          frequencies, NULL, NULL) < 0 ||
-            process_cache(&cache_cb,
-                          HUFFMAN_DC_CHROMA, HUFFMAN_AC_CHROMA,
-                          frequencies, NULL, NULL) < 0 ||
-            process_cache(&cache_cr,
-                          HUFFMAN_DC_CHROMA, HUFFMAN_AC_CHROMA,
-                          frequencies, NULL, NULL) < 0) {
+        reduce_ac_frequencies(frequencies[HUFFMAN_AC_LUMA], luma_ac);
+        reduce_ac_frequencies(frequencies[HUFFMAN_AC_CHROMA], chroma_ac);
+        if (!count_dc_frequencies(&cache_y,
+                                  frequencies[HUFFMAN_DC_LUMA]) ||
+            !count_dc_frequencies(&cache_cb,
+                                  frequencies[HUFFMAN_DC_CHROMA]) ||
+            !count_dc_frequencies(&cache_cr,
+                                  frequencies[HUFFMAN_DC_CHROMA])) {
             cache_free(&cache_y);
             cache_free(&cache_cb);
             cache_free(&cache_cr);
+            free(luma_ac);
+            free(chroma_ac);
             return 0;
         }
 
@@ -473,6 +662,8 @@ int encode_image(Plane *y, Plane *cb, Plane *cr, int quality, int optimize,
                 cache_free(&cache_y);
                 cache_free(&cache_cb);
                 cache_free(&cache_cr);
+                free(luma_ac);
+                free(chroma_ac);
                 return 0;
             }
         }
@@ -480,6 +671,8 @@ int encode_image(Plane *y, Plane *cb, Plane *cr, int quality, int optimize,
     } else {
         huffman_default_specs(specs);
     }
+    free(luma_ac);
+    free(chroma_ac);
 
     HuffTable tables[HUFFMAN_TABLE_COUNT];
     for (int table = 0; table < HUFFMAN_TABLE_COUNT; table++) {
@@ -496,13 +689,13 @@ int encode_image(Plane *y, Plane *cb, Plane *cr, int quality, int optimize,
 
     stats->blocks_y = process_cache(
         &cache_y, HUFFMAN_DC_LUMA, HUFFMAN_AC_LUMA,
-        NULL, &writer, tables);
+        &writer, tables);
     stats->blocks_cb = process_cache(
         &cache_cb, HUFFMAN_DC_CHROMA, HUFFMAN_AC_CHROMA,
-        NULL, &writer, tables);
+        &writer, tables);
     stats->blocks_cr = process_cache(
         &cache_cr, HUFFMAN_DC_CHROMA, HUFFMAN_AC_CHROMA,
-        NULL, &writer, tables);
+        &writer, tables);
 
     cache_free(&cache_y);
     cache_free(&cache_cb);

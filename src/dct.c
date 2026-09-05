@@ -5,6 +5,7 @@
 
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
+#include <pthread.h>
 #endif
 
 static const float AAN_SCALE[8] = {
@@ -110,6 +111,128 @@ static void idct_scalar(const float coef[64], float block[64]) {
 }
 
 #if defined(__x86_64__) || defined(__i386__)
+
+static float sparse_inverse_basis[8][8];
+static pthread_once_t sparse_inverse_once = PTHREAD_ONCE_INIT;
+
+/* A separable inverse transform reconstructs a sparse block as the DC level
+   plus one outer product per AC coefficient. These are the exact one-pass
+   AAN responses used by the full transform, kept as eight tiny basis rows. */
+static void init_sparse_inverse_basis(void) {
+    for (int frequency = 0; frequency < 8; frequency++) {
+        float values[8] = {0};
+        values[frequency] = 1.0f;
+        idct_pass(values, 1);
+        memcpy(sparse_inverse_basis[frequency], values, sizeof(values));
+    }
+}
+
+__attribute__((target("avx2"), always_inline))
+static inline void store_idct_row_avx2(__m256 value,
+                                        unsigned char *destination,
+                                        __m256 shift, __m256 round) {
+    value = _mm256_add_ps(value, shift);
+    value = _mm256_add_ps(value, round);
+    __m256i i32 = _mm256_cvttps_epi32(value);
+    __m128i i16 = _mm_packs_epi32(_mm256_castsi256_si128(i32),
+                                  _mm256_extracti128_si256(i32, 1));
+    _mm_storel_epi64((__m128i *)destination, _mm_packus_epi16(i16, i16));
+}
+
+__attribute__((target("avx2")))
+void idct_block_store_single_avx2(float dc, float ac, int index,
+                                  unsigned char *destination, int stride) {
+    pthread_once(&sparse_inverse_once, init_sparse_inverse_basis);
+
+    int vertical_frequency = index >> 3;
+    int horizontal_frequency = index & 7;
+    __m256 horizontal =
+        _mm256_loadu_ps(sparse_inverse_basis[horizontal_frequency]);
+    const __m256 dc_vector = _mm256_set1_ps(dc);
+    const __m256 shift = _mm256_set1_ps(128.0f);
+    const __m256 round = _mm256_set1_ps(0.5f);
+    for (int row = 0; row < 8; row++) {
+        float vertical = ac * sparse_inverse_basis[vertical_frequency][row];
+        __m256 value = _mm256_add_ps(
+            dc_vector,
+            _mm256_mul_ps(_mm256_set1_ps(vertical), horizontal));
+        store_idct_row_avx2(
+            value, destination + (long)stride * row, shift, round);
+    }
+}
+
+__attribute__((target("avx2")))
+void idct_block_store_two_avx2(float dc,
+                               float first_ac, int first_index,
+                               float second_ac, int second_index,
+                               unsigned char *destination, int stride) {
+    pthread_once(&sparse_inverse_once, init_sparse_inverse_basis);
+
+    int first_vertical = first_index >> 3;
+    int second_vertical = second_index >> 3;
+    __m256 first_horizontal =
+        _mm256_loadu_ps(sparse_inverse_basis[first_index & 7]);
+    __m256 second_horizontal =
+        _mm256_loadu_ps(sparse_inverse_basis[second_index & 7]);
+    const __m256 dc_vector = _mm256_set1_ps(dc);
+    const __m256 shift = _mm256_set1_ps(128.0f);
+    const __m256 round = _mm256_set1_ps(0.5f);
+    for (int row = 0; row < 8; row++) {
+        float first =
+            first_ac * sparse_inverse_basis[first_vertical][row];
+        float second =
+            second_ac * sparse_inverse_basis[second_vertical][row];
+        __m256 value = _mm256_add_ps(
+            dc_vector,
+            _mm256_mul_ps(_mm256_set1_ps(first), first_horizontal));
+        value = _mm256_add_ps(
+            value,
+            _mm256_mul_ps(_mm256_set1_ps(second), second_horizontal));
+        store_idct_row_avx2(
+            value, destination + (long)stride * row, shift, round);
+    }
+}
+
+__attribute__((target("avx2")))
+void idct_block_store_three_avx2(float dc,
+                                 float first_ac, int first_index,
+                                 float second_ac, int second_index,
+                                 float third_ac, int third_index,
+                                 unsigned char *destination, int stride) {
+    pthread_once(&sparse_inverse_once, init_sparse_inverse_basis);
+
+    int first_vertical = first_index >> 3;
+    int second_vertical = second_index >> 3;
+    int third_vertical = third_index >> 3;
+    __m256 first_horizontal =
+        _mm256_loadu_ps(sparse_inverse_basis[first_index & 7]);
+    __m256 second_horizontal =
+        _mm256_loadu_ps(sparse_inverse_basis[second_index & 7]);
+    __m256 third_horizontal =
+        _mm256_loadu_ps(sparse_inverse_basis[third_index & 7]);
+    const __m256 dc_vector = _mm256_set1_ps(dc);
+    const __m256 shift = _mm256_set1_ps(128.0f);
+    const __m256 round = _mm256_set1_ps(0.5f);
+    for (int row = 0; row < 8; row++) {
+        float first =
+            first_ac * sparse_inverse_basis[first_vertical][row];
+        float second =
+            second_ac * sparse_inverse_basis[second_vertical][row];
+        float third =
+            third_ac * sparse_inverse_basis[third_vertical][row];
+        __m256 value = _mm256_add_ps(
+            dc_vector,
+            _mm256_mul_ps(_mm256_set1_ps(first), first_horizontal));
+        value = _mm256_add_ps(
+            value,
+            _mm256_mul_ps(_mm256_set1_ps(second), second_horizontal));
+        value = _mm256_add_ps(
+            value,
+            _mm256_mul_ps(_mm256_set1_ps(third), third_horizontal));
+        store_idct_row_avx2(
+            value, destination + (long)stride * row, shift, round);
+    }
+}
 
 // Eight rows live in eight registers. Each lane is therefore one column,
 // allowing the scalar AAN butterfly to run on all columns at once.
