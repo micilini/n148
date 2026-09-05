@@ -1,4 +1,4 @@
-#include <math.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -12,11 +12,15 @@
 // HUFFMAN TABLES FOR DECODING
 // ============================================================
 
+#define LOOKUP_BITS 10
+
 typedef struct {
     int min_code[17];
     int max_code[17];
     int value_index[17];
     const unsigned char *values;
+    unsigned char fast_symbol[1 << LOOKUP_BITS];
+    unsigned char fast_length[1 << LOOKUP_BITS];
 } HuffDecodeTable;
 
 static void build_decode_table(const HuffSpec *spec,
@@ -39,6 +43,29 @@ static void build_decode_table(const HuffSpec *spec,
         }
         code <<= 1;
     }
+
+    // Every slot whose prefix matches a short code gets filled in.
+    // A code of length L covers 2^(LOOKUP_BITS - L) consecutive slots,
+    // because the bits after it can be anything.
+    memset(table->fast_length, 0, sizeof(table->fast_length));
+
+    code = 0;
+    value_index = 0;
+    for (int length = 1; length <= 16; length++) {
+        for (int i = 0; i < spec->bits[length];
+             i++, value_index++, code++) {
+            if (length <= LOOKUP_BITS) {
+                int shift = LOOKUP_BITS - length;
+                int start = code << shift;
+                int end = start + (1 << shift);
+                for (int slot = start; slot < end; slot++) {
+                    table->fast_symbol[slot] = spec->values[value_index];
+                    table->fast_length[slot] = (unsigned char)length;
+                }
+            }
+        }
+        code <<= 1;
+    }
 }
 
 // ============================================================
@@ -49,41 +76,105 @@ typedef struct {
     unsigned char *buffer;
     long size;
     long byte_position;
-    int bit_position;
+    uint64_t accumulator;
+    int available;
     int failed;
 } BitReader;
+
+static inline uint64_t load_be64(const unsigned char *source) {
+    uint64_t value;
+    memcpy(&value, source, sizeof(value));
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    return __builtin_bswap64(value);
+#elif defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    return value;
+#else
+    return ((uint64_t)source[0] << 56) |
+           ((uint64_t)source[1] << 48) |
+           ((uint64_t)source[2] << 40) |
+           ((uint64_t)source[3] << 32) |
+           ((uint64_t)source[4] << 24) |
+           ((uint64_t)source[5] << 16) |
+           ((uint64_t)source[6] << 8) |
+           (uint64_t)source[7];
+#endif
+}
+
+// Tops the accumulator back up. Near the end of the buffer it falls
+// back to byte at a time so it never reads past the data.
+static inline void br_refill(BitReader *reader) {
+    if (reader->available > 56) {
+        return;
+    }
+
+    if (reader->byte_position + 8 <= reader->size) {
+        uint64_t next = load_be64(reader->buffer + reader->byte_position);
+        reader->accumulator |= next >> reader->available;
+        reader->byte_position += (63 - reader->available) >> 3;
+        reader->available |= 56;
+        return;
+    }
+
+    while (reader->available <= 56 &&
+           reader->byte_position < reader->size) {
+        reader->accumulator |=
+            (uint64_t)reader->buffer[reader->byte_position++]
+            << (56 - reader->available);
+        reader->available += 8;
+    }
+}
+
+static inline unsigned int br_peek(BitReader *reader, int count) {
+    return (unsigned int)(reader->accumulator >> (64 - count));
+}
+
+static inline void br_skip(BitReader *reader, int count) {
+    if (count > reader->available) {
+        reader->failed = 1;
+        return;
+    }
+
+    reader->accumulator <<= count;
+    reader->available -= count;
+}
 
 static void br_init(BitReader *reader, unsigned char *buffer, long size) {
     reader->buffer = buffer;
     reader->size = size;
     reader->byte_position = 0;
-    reader->bit_position = 0;
+    reader->accumulator = 0;
+    reader->available = 0;
     reader->failed = 0;
 }
 
 static int br_next_bit(BitReader *reader) {
-    if (reader->byte_position >= reader->size) {
+    br_refill(reader);
+    if (reader->available == 0) {
         reader->failed = 1;
         return 0;
     }
 
-    int bit =
-        (reader->buffer[reader->byte_position] >>
-         (7 - reader->bit_position)) & 1;
-    reader->bit_position++;
-
-    if (reader->bit_position == 8) {
-        reader->bit_position = 0;
-        reader->byte_position++;
-    }
-
+    int bit = (int)(reader->accumulator >> 63);
+    br_skip(reader, 1);
     return bit;
 }
 
 static int br_read_symbol(BitReader *reader, HuffDecodeTable *table) {
+    br_refill(reader);
+
+    // One shot: peek at the next ten bits and see whether a short
+    // code already claims that prefix.
+    unsigned int window = br_peek(reader, LOOKUP_BITS);
+    int length = table->fast_length[window];
+    if (length) {
+        br_skip(reader, length);
+        return table->fast_symbol[window];
+    }
+
+    // Long code: walk the canonical ranges one length at a time.
     int code = br_next_bit(reader);
 
-    for (int length = 1; length <= 16 && !reader->failed; length++) {
+    for (length = 1; length <= 16 && !reader->failed; length++) {
         if (table->max_code[length] >= 0 &&
             code >= table->min_code[length] &&
             code <= table->max_code[length]) {
@@ -156,6 +247,7 @@ static int decode_block(BitReader *reader, float block[64],
 
     // AC: expand (run, size) pairs into the remaining 63 slots.
     int position = 1;
+    int nonzero_ac = 0;
     while (position < 64) {
         int symbol = br_read_symbol(reader, ac_table);
         if (symbol < 0) {
@@ -187,7 +279,26 @@ static int decode_block(BitReader *reader, float block[64],
         if (reader->failed) {
             return 0;
         }
+        nonzero_ac = 1;
         position++;
+    }
+
+    // A block whose AC coefficients all vanished reconstructs to a
+    // single flat value: the transform of a constant is a constant.
+    // At lower qualities this covers a large share of the image, and
+    // skipping the transform there is free speed.
+    if (!nonzero_ac) {
+        float flat = zigzag[0] * quantization->multiplier[0] + 128.0f;
+        if (flat < 0.0f) {
+            flat = 0.0f;
+        }
+        if (flat > 255.0f) {
+            flat = 255.0f;
+        }
+        for (int i = 0; i < 64; i++) {
+            block[i] = flat;
+        }
+        return 1;
     }
 
     // Undo quantization and zig-zag ordering in one pass.
@@ -312,7 +423,7 @@ int decode_image(unsigned char *buffer, long buffer_size,
     }
 
     stats->bytes_consumed =
-        reader.byte_position + (reader.bit_position > 0 ? 1 : 0);
+        reader.byte_position - reader.available / 8;
     return 1;
 }
 
@@ -330,22 +441,32 @@ static unsigned char clamp_byte(double value) {
     return (unsigned char)(value + 0.5);
 }
 
-// Bilinear sampling blends the four neighbours around a fractional point.
-// plane_sample() clamps all edge coordinates safely.
-static double sample_bilinear(Plane *plane, double x, double y) {
-    int x0 = (int)floor(x);
-    int y0 = (int)floor(y);
-    double fraction_x = x - x0;
-    double fraction_y = y - y0;
+#define CHROMA_SHIFT 4
 
-    double top =
-        plane_sample(plane, x0, y0) * (1.0 - fraction_x) +
-        plane_sample(plane, x0 + 1, y0) * fraction_x;
-    double bottom =
-        plane_sample(plane, x0, y0 + 1) * (1.0 - fraction_x) +
-        plane_sample(plane, x0 + 1, y0 + 1) * fraction_x;
+static void expand_chroma_row(Plane *plane, int py, int dst_width,
+                              int stretch_x, int stretch_y,
+                              unsigned short *dst) {
+    int near_y = stretch_y ? (py >> 1) : py;
+    int far_y = stretch_y
+        ? ((py & 1) ? near_y + 1 : near_y - 1)
+        : near_y;
 
-    return top * (1.0 - fraction_y) + bottom * fraction_y;
+    for (int x = 0; x < dst_width; x++) {
+        int near_x = stretch_x ? (x >> 1) : x;
+        int far_x = stretch_x
+            ? ((x & 1) ? near_x + 1 : near_x - 1)
+            : near_x;
+
+        int a = plane_sample(plane, near_x, near_y);
+        int b = plane_sample(plane, far_x, near_y);
+        int c = plane_sample(plane, near_x, far_y);
+        int d = plane_sample(plane, far_x, far_y);
+
+        // The division is deliberately not performed here. Keeping the
+        // value multiplied by 16 preserves its fractional part until the
+        // colour conversion has used it.
+        dst[x] = (unsigned short)(9 * a + 3 * b + 3 * c + d);
+    }
 }
 
 int merge_channels(Plane *y, Plane *cb, Plane *cr,
@@ -366,25 +487,49 @@ int merge_channels(Plane *y, Plane *cb, Plane *cr,
         return 0;
     }
 
+    unsigned short *row_cb = NULL;
+    unsigned short *row_cr = NULL;
+    if (smooth) {
+        row_cb = (unsigned short *)malloc(
+            (size_t)width * sizeof(unsigned short));
+        row_cr = (unsigned short *)malloc(
+            (size_t)width * sizeof(unsigned short));
+        if (!row_cb || !row_cr) {
+            free(row_cb);
+            free(row_cr);
+            free(output->pixels);
+            output->pixels = NULL;
+            return 0;
+        }
+    }
+
     double scale_x = (double)cb->width / width;
     double scale_y = (double)cb->height / height;
+    double chroma_scale = 1.0 / (1 << CHROMA_SHIFT);
+    int stretch_x = cb->width != width;
+    int stretch_y = cb->height != height;
 
     for (int pixel_y = 0; pixel_y < height; pixel_y++) {
+        if (smooth) {
+            expand_chroma_row(cb, pixel_y, width,
+                              stretch_x, stretch_y, row_cb);
+            expand_chroma_row(cr, pixel_y, width,
+                              stretch_x, stretch_y, row_cr);
+        }
+
         for (int pixel_x = 0; pixel_x < width; pixel_x++) {
             double luma = y->data[(long)pixel_y * width + pixel_x];
 
             double blue_difference;
             double red_difference;
             if (smooth) {
-                // Map pixel centres between the luma and chroma grids.
-                double chroma_x =
-                    (pixel_x + 0.5) * scale_x - 0.5;
-                double chroma_y =
-                    (pixel_y + 0.5) * scale_y - 0.5;
+                // The 1/16 is applied here, in floating point, so the
+                // fractional part survives all the way to the colour
+                // conversion.
                 blue_difference =
-                    sample_bilinear(cb, chroma_x, chroma_y) - 128.0;
+                    row_cb[pixel_x] * chroma_scale - 128.0;
                 red_difference =
-                    sample_bilinear(cr, chroma_x, chroma_y) - 128.0;
+                    row_cr[pixel_x] * chroma_scale - 128.0;
             } else {
                 int chroma_x = (int)(pixel_x * scale_x);
                 int chroma_y = (int)(pixel_y * scale_y);
@@ -406,5 +551,7 @@ int merge_channels(Plane *y, Plane *cb, Plane *cr,
         }
     }
 
+    free(row_cb);
+    free(row_cr);
     return 1;
 }
