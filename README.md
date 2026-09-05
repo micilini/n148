@@ -17,7 +17,7 @@ The project is split into two planned formats:
 | **N.148i** | Static images such as photographs, illustrations, and screenshots | `.n148i` |
 | **N.148v** | Video streams and moving images | To be defined |
 
-The current milestone completes the optimization cycle with a small pthread-based parallel runner, sparse inverse transforms, vectorized chroma reconstruction, fused 4:2:0 color conversion, batched entropy symbols, and runtime-dispatched AVX2/FMA paths.
+The current milestone completes the optimization cycle with a persistent worker pool, fused Huffman decode actions, direct sparse and dense inverse reconstruction, a contiguous coefficient cache, vectorized chroma processing, and runtime-dispatched AVX2/FMA paths.
 
 ---
 
@@ -29,19 +29,19 @@ The executable now performs both directions of the codec:
 ENCODER                                  DECODER
 P6 PPM input                             N.148i v3 header
     ↓                                         ↓
-RGB → fixed-point YCbCr                  Huffman decoding
+RGB → factored fixed-point YCbCr         Fused Huffman action lookup
     ↓                                         ↓
 4:4:4 / 4:2:2 / 4:2:0 chroma            Run-length expansion
     ↓                                         ↓
 8 × 8 blocks + vector loads              Inverse zig-zag
     ↓                                         ↓
-AAN DCT → AVX2 quantization              Scaled dequantization → sparse/full IDCT
+AAN DCT → AVX2 quantization              Live-only dequantization → direct IDCT stores
     ↓                                         ↓
 Zig-zag → RLE → optimized Huffman        Block reconstruction
     ↓                                         ↓
 Header + tables + bitstream              Bilinear chroma upsampling
                                               ↓
-                                         FMA/fixed-point YCbCr → RGB
+                                         AVX2/FMA YCbCr → RGB
                                               ↓
                                          Decoded P6 PPM
 ```
@@ -54,14 +54,23 @@ The decoder reverses the encoder in the exact opposite order. Plane ordering is 
 
 This milestone adds:
 
-- a pthread-based parallel loop that divides independent rows into contiguous slices, lets the calling thread process the first slice, and runs tiny jobs inline;
+- a persistent pthread worker pool that divides independent rows into contiguous slices, lets the calling thread process the first slice, and runs tiny jobs inline;
+- runtime worker-count control, a 32-worker cap, a threadless build, and platform-aware CPU/core detection;
 - parallel color conversion, chroma subsampling, DCT/quantization, private Huffman-frequency counting with a final reduction, and RGB reconstruction;
 - intentionally sequential entropy writing/reading and DC prediction, whose ordering is part of the format;
+- a fused Huffman action table that resolves short codes, amplitudes, signs, runs, EOB, and ZRL in one lookup, backed by a 32-bit refill and canonical fallback;
+- live-only natural-order dequantization that avoids clearing and walking all 64 coefficients for DC-only blocks;
+- packed DC block fills and direct AVX2 dense IDCT stores into complete interior blocks;
 - direct sparse AVX2 IDCT reconstruction for blocks with one, two, or three surviving AC coefficients;
 - AVX2 vertical blending and horizontal 9:3:3:1 chroma stretching, processing 16 samples per pass;
 - an AVX2/FMA inverse color path selected by a new CPU capability level;
 - fused 4:2:0 conversion and subsampling that processes two source rows while they are still cache-hot;
-- batched AC Huffman writing with separate sparse and dense paths;
+- batched AC Huffman writing with separate sparse and dense paths and a per-block capacity reservation;
+- an AVX2 nonzero scan plus cached AC counts, masks, and coefficients in one contiguous allocation;
+- direct AVX2 DCT dispatch after the CPU path has already been selected for a worker band;
+- a proportional initial bitstream allocation and an explicit eight-AC dense/sparse threshold;
+- factored RGB-to-YCbCr arithmetic that removes one 32-bit multiply per channel;
+- an inline merge cutoff for images below 512 × 1024 pixels, where pool handover costs more than it saves;
 - runtime CPU detection with CPUID and operating-system AVX state checks;
 - portable scalar fallback on processors without AVX2;
 - AVX2 AAN forward and inverse transforms that process eight columns together;
@@ -71,7 +80,7 @@ This milestone adds:
 - per-function AVX2 targeting, so the rest of the binary keeps its baseline ISA;
 - a test override for comparing scalar and vector paths in the same binary.
 
-The N.148i format and compressed bytes remain unchanged across worker counts and CPU paths. The scalar and plain AVX2 paths also reconstruct identical pixels. FMA can move a handful of exact half-way color-rounding cases by one byte, while preserving the measured reconstruction quality.
+The N.148i format, compressed bytes, reconstructed pixels, and measured PSNR remain unchanged across the validated scalar/AVX2 paths and worker counts. The FMA path preserves the non-FMA ordering for the sensitive green-channel rounding step and keeps the scalar tail for incomplete vector groups.
 
 ---
 
@@ -81,12 +90,12 @@ Encoder and decoder correctness depends on both sides using identical tables and
 
 - `tables.c` owns quantization tables, zig-zag order, Huffman definitions, and quality scaling;
 - `huffman.c` builds, validates, serializes, and reads canonical Huffman specifications;
-- `cpu.c` detects the SIMD level supported by both the processor and operating system;
-- `parallel.c` divides independent row ranges among pthread workers and joins them before returning;
-- `dct.c` owns the scalar and AVX2 AAN forward and inverse passes;
+- `cpu.c` detects and reports the SIMD level supported by both the processor and operating system;
+- `parallel.c` owns the persistent worker pool, runtime worker count, inline fallback, and threadless build;
+- `dct.c` owns the reference, scalar AAN, AVX2 AAN, sparse, and direct-store inverse transforms;
 - `ppm.c` owns scalar and AVX2 fixed-point color separation, including the fused parallel 4:2:0 path;
-- `encoder.c` transforms block rows in parallel, reduces private symbol counts, and keeps ordered DC/bitstream writing sequential;
-- `decoder.c` owns sparse IDCT dispatch, vectorized chroma upsampling, parallel row reconstruction, and scalar/AVX2/FMA inverse color conversion.
+- `encoder.c` transforms block rows in parallel, caches masks/counts/coefficients contiguously, reduces private symbol counts, and keeps ordered DC/bitstream writing sequential;
+- `decoder.c` owns fused entropy actions, live-only dequantization, direct IDCT stores, vectorized chroma upsampling, and parallel AVX2/FMA reconstruction.
 
 This prevents a table change on one side from silently making newly encoded files incompatible with the decoder.
 
@@ -136,15 +145,19 @@ When `optimized` is one, four tables follow the header. Each table stores 16 cod
 n148/
 ├── src/
 │   ├── main.c          # Runs the encode/decode cycle and reports PSNR
+│   ├── bench_cli.c     # Repeatable codec timing driver
+│   ├── validate_cli.c  # CPU-path, worker-count, and odd-edge validator
+│   ├── compare_cli.c   # Direct libjpeg-turbo comparison driver
 │   ├── header.h/.c     # N.148i v3 header serialization
 │   ├── ppm.h/.c        # PPM I/O and scalar/AVX2 RGB color separation
 │   ├── tables.h/.c     # Shared quantization, zig-zag, and Huffman tables
 │   ├── huffman.h/.c    # Optimized Huffman construction and table I/O
 │   ├── cpu.h/.c        # Runtime SIMD capability detection
-│   ├── parallel.h/.c   # Contiguous pthread worker ranges
+│   ├── parallel.h/.c   # Persistent pool and contiguous worker ranges
 │   ├── dct.h/.c        # Scalar and AVX2 AAN forward and inverse DCT
 │   ├── encoder.h/.c    # Parallel transform/reduction and entropy pipeline
 │   └── decoder.h/.c    # Sparse IDCT and parallel AVX2/FMA reconstruction
+├── tools/              # Corpus benchmarking and result-analysis helpers
 ├── images/
 │   └── example.ppm     # Official 320 × 240 Micilini fixture
 ├── output/
@@ -152,6 +165,7 @@ n148/
 │   └── decoded.ppm     # Reconstructed P6 image
 ├── .gitattributes
 ├── .gitignore
+├── Makefile
 ├── LICENSE
 └── README.md
 ```
@@ -164,23 +178,22 @@ n148/
 
 - A C compiler with C11 support, such as GCC or Clang
 - The standard C math library
-- POSIX threads on Unix-like systems
-- No third-party codec libraries
+- POSIX threads on Unix-like systems for the default parallel build
+- No third-party codec libraries for `n148i`, `bench`, or `validate`
+- libjpeg development headers only for the optional `compare` target
 
-From the `src/` directory:
+From the repository root:
 
 ```bash
-gcc -std=c11 -Wall -Wextra -Wpedantic \
-  main.c cpu.c parallel.c header.c ppm.c tables.c dct.c huffman.c \
-  encoder.c decoder.c -o n148i -lm -pthread -O2
-./n148i
+make
+./n148i images/example.ppm 50 2
 ```
 
 Expected output at quality 50:
 
 ```text
 === N.148i encoder ===
-Input:    ../images/example.ppm  (320 x 240)
+Input:    images/example.ppm  (320 x 240)
 Quality:  50
 Chroma:   4:2:0
 Huffman:  optimized for this image
@@ -191,13 +204,13 @@ Cb/Cr planes: 160 x 120
 Encoded 1800 blocks
 Huffman tables: 124 bytes stored in the file
 Entropy data:   2145 bytes
-Wrote ../output/image.n148i
+Wrote output/image.n148i
 
 === N.148i decoder ===
 Header:  v3, 320 x 240, quality 50, chroma 4:2:0, custom tables
 Decoded 1800 blocks, consumed 2145 of 2145 bytes
 Upsampling: bilinear
-Wrote ../output/decoded.ppm
+Wrote output/decoded.ppm
 
 === Results ===
 Original PPM:   230415 bytes (225.0 KB)
@@ -212,15 +225,13 @@ Both PPM files are 320 × 240 RGB24 images and can be opened by applications tha
 
 ## Quality and reconstruction
 
-Quality can be overridden at compile time without editing the source:
+The executable accepts input path, quality, and chroma mode without a rebuild:
 
 ```bash
-gcc -std=c11 -Wall -Wextra -Wpedantic -DQUALITY=90 \
-  main.c cpu.c parallel.c header.c ppm.c tables.c dct.c huffman.c \
-  encoder.c decoder.c -o n148i -lm -pthread -O2
+./n148i images/example.ppm 90 2
 ```
 
-The other compile-time controls are `CHROMA_MODE` (`0`, `1`, or `2`), `OPTIMIZE` (`0` or `1`), and `SMOOTH_UPSAMPLING` (`0` or `1`). `N148_WORKERS` can pin a positive worker count for repeatable scaling tests; otherwise the parallel runner uses the online processor count. With quality 50, optimized tables, and bilinear upsampling, the official fixture reproduces the article's chroma matrix:
+The compile-time defaults remain `QUALITY`, `CHROMA_MODE` (`0`, `1`, or `2`), `OPTIMIZE` (`0` or `1`), and `SMOOTH_UPSAMPLING` (`0` or `1`). Benchmark and validation drivers select the worker count at runtime with `n148_set_thread_count`; `make NOTHREADS=1` produces the inline-only build. With quality 50, optimized tables, and bilinear upsampling, the official fixture reproduces the article's chroma matrix:
 
 | Chroma | N.148i size | PSNR |
 | ---: | ---: | ---: |
@@ -240,22 +251,24 @@ The executable validates the file before reconstruction:
 - incomplete fixed-size header fields are rejected;
 - unsupported versions, dimensions, chroma modes, or optimization flags are rejected;
 - malformed, oversubscribed, duplicate-symbol, or truncated custom Huffman tables are rejected;
-- a payload shorter than the header's `data_size` is reported as truncated;
-- invalid or prematurely exhausted entropy data causes decoding to fail safely.
+- zero or unsupported payload metadata is rejected before allocation;
+- a payload shorter than the header's declared `data_size` is rejected before entropy decoding.
 
-These checks prevent malformed input from being treated as valid image data.
+These checks prevent malformed container metadata and truncated files from being treated as valid image data.
 
 ---
 
 ## Validation
 
-Compile with strict warnings and runtime sanitizers:
+Build and run the repository validator:
 
 ```bash
-gcc -std=c11 -Wall -Wextra -Wpedantic -Werror \
-  -fsanitize=address,undefined -fno-omit-frame-pointer \
-  main.c cpu.c parallel.c header.c ppm.c tables.c dct.c huffman.c \
-  encoder.c decoder.c -o /tmp/n148i-sanitized -lm -pthread -O2
+make validate
+./validate
+
+make clean
+make NOTHREADS=1 validate
+./validate
 ```
 
 Important invariants for the reference round trip:
@@ -270,7 +283,6 @@ Important invariants for the reference round trip:
 - AAN DCT followed by AAN IDCT reproduces unquantized blocks within floating-point tolerance;
 - scalar and AVX2 transforms, color conversion, quantization, upsampling, and sparse reconstruction produce byte-identical compressed and reconstructed output;
 - one worker and multiple workers produce byte-identical compressed and reconstructed output;
-- ThreadSanitizer reports no shared-counter or output-slice races;
 - partial edge blocks and odd image dimensions preserve the original dimensions.
 
 ---

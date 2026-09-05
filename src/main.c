@@ -9,9 +9,9 @@
 #include "huffman.h"
 #include "ppm.h"
 
-#define INPUT_PATH "../images/example.ppm"
-#define N148I_PATH "../output/image.n148i"
-#define DECODED_PATH "../output/decoded.ppm"
+#define DEFAULT_INPUT   "images/example.ppm"
+#define DEFAULT_ENCODED "output/image.n148i"
+#define DEFAULT_DECODED "output/decoded.ppm"
 #ifndef QUALITY
 #define QUALITY 50
 #endif
@@ -62,7 +62,31 @@ static double compute_psnr(Image *first, Image *second) {
     return 10.0 * log10(255.0 * 255.0 / mean_squared_error);
 }
 
-int main(void) {
+static void print_usage(const char *program) {
+    printf("usage: %s [input.ppm] [quality] [chroma]\n", program);
+    printf("  input.ppm  source image (default: %s)\n", DEFAULT_INPUT);
+    printf("  quality    1..100        (default: %d)\n", QUALITY);
+    printf("  chroma     0=4:4:4 1=4:2:2 2=4:2:0 (default: %d)\n", CHROMA_MODE);
+}
+
+int main(int argc, char **argv) {
+    // Paths and settings come from the command line when given, so the
+    // same binary can be pointed at any image without a rebuild.
+    const char *INPUT_PATH   = DEFAULT_INPUT;
+    const char *N148I_PATH   = DEFAULT_ENCODED;
+    const char *DECODED_PATH = DEFAULT_DECODED;
+    int quality = QUALITY;
+    int chroma  = CHROMA_MODE;
+
+    if (argc > 1) {
+        if (argv[1][0] == '-') { print_usage(argv[0]); return 0; }
+        INPUT_PATH = argv[1];
+    }
+    if (argc > 2) quality = atoi(argv[2]);
+    if (argc > 3) chroma  = atoi(argv[3]);
+    if (quality < 1 || quality > 100) { printf("quality must be 1..100\n"); return 1; }
+    if (chroma < 0 || chroma > 2)     { printf("chroma must be 0, 1 or 2\n"); return 1; }
+
     Image original = {0};
     Image decoded = {0};
     Plane y = {0};
@@ -78,8 +102,8 @@ int main(void) {
     FILE *file = NULL;
     int exit_code = EXIT_FAILURE;
 
-    if ((CHROMA_MODE != CHROMA_444 && CHROMA_MODE != CHROMA_422 &&
-         CHROMA_MODE != CHROMA_420) ||
+    if ((chroma != CHROMA_444 && chroma != CHROMA_422 &&
+         chroma != CHROMA_420) ||
         (OPTIMIZE != 0 && OPTIMIZE != 1) ||
         (SMOOTH_UPSAMPLING != 0 && SMOOTH_UPSAMPLING != 1)) {
         printf("Invalid codec configuration.\n");
@@ -94,12 +118,12 @@ int main(void) {
     printf("=== N.148i encoder ===\n");
     printf("Input:    %s  (%d x %d)\n", INPUT_PATH,
            original.width, original.height);
-    printf("Quality:  %d\n", QUALITY);
-    printf("Chroma:   %s\n", chroma_name(CHROMA_MODE));
+    printf("Quality:  %d\n", quality);
+    printf("Chroma:   %s\n", chroma_name(chroma));
     printf("Huffman:  %s\n\n",
            OPTIMIZE ? "optimized for this image" : "standard tables");
 
-    if (!split_channels(&original, &y, &cb, &cr, CHROMA_MODE)) {
+    if (!split_channels(&original, &y, &cb, &cr, chroma)) {
         printf("Could not split channels.\n");
         goto cleanup;
     }
@@ -107,7 +131,7 @@ int main(void) {
     printf("Cb/Cr planes: %d x %d\n\n", cb.width, cb.height);
 
     EncodeStats encode_stats;
-    if (!encode_image(&y, &cb, &cr, QUALITY, OPTIMIZE, encode_specs,
+    if (!encode_image(&y, &cb, &cr, quality, OPTIMIZE, encode_specs,
                       &compressed, &encode_stats)) {
         printf("Encoding failed.\n");
         goto cleanup;
@@ -134,8 +158,8 @@ int main(void) {
     header.version = N148I_VERSION;
     header.width = (uint32_t)original.width;
     header.height = (uint32_t)original.height;
-    header.quality = QUALITY;
-    header.chroma = CHROMA_MODE;
+    header.quality = quality;
+    header.chroma = chroma;
     header.optimized = OPTIMIZE;
     header.data_size = (uint32_t)encode_stats.data_size;
 
