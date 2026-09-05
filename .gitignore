@@ -1,6 +1,18 @@
 # Local compiler output
+/n148i
+/bench
+/compare
+/validate
 /src/n148i
 /src/n148i.exe
+/gmon.out
+__pycache__/
+*.o
+
+# Generated codec/image files (the curated fixtures in images/ are tracked).
+*.n148i
+*.pgm
+*.ppm
 
 # Editor and operating-system files
 .DS_Store
