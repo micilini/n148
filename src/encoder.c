@@ -3,10 +3,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cpu.h"
 #include "dct.h"
 #include "encoder.h"
 #include "huffman.h"
 #include "tables.h"
+
+#if defined(__x86_64__) || defined(__i386__)
+#include <immintrin.h>
+#endif
 
 typedef struct {
     int code[256];
@@ -180,11 +185,50 @@ static void build_scaled_quant(int quantization[8][8], ScaledQuant *out) {
     }
 }
 
+#if defined(__x86_64__) || defined(__i386__)
+
+// Quantizing in natural order keeps every load contiguous, and the values
+// are narrowed before zig-zag reordering so the scattered pass moves half
+// as many bytes. Gather is deliberately avoided because its real-codec
+// performance varies considerably between processors.
+__attribute__((target("avx2")))
+static void quantize_block_avx2(const float coefficients[64],
+                                const float reciprocal[64],
+                                short zigzag[64]) {
+    short natural[64];
+    for (int i = 0; i < 64; i += 16) {
+        __m256i low = _mm256_cvtps_epi32(
+            _mm256_mul_ps(_mm256_loadu_ps(coefficients + i),
+                          _mm256_loadu_ps(reciprocal + i)));
+        __m256i high = _mm256_cvtps_epi32(
+            _mm256_mul_ps(_mm256_loadu_ps(coefficients + i + 8),
+                          _mm256_loadu_ps(reciprocal + i + 8)));
+
+        __m256i packed = _mm256_packs_epi32(low, high);
+        // packs works within 128-bit lanes, so restore natural order.
+        packed = _mm256_permute4x64_epi64(packed, 0xD8);
+        _mm256_storeu_si256((__m256i *)(natural + i), packed);
+    }
+
+    for (int i = 0; i < 64; i++) {
+        zigzag[i] = natural[ZIGZAG[i]];
+    }
+}
+
+#endif
+
 static void quantize_block(const float block[64],
                            const ScaledQuant *quantization,
                            short zigzag[64]) {
     float coefficients[64];
     dct_block_fast(block, coefficients);
+
+#if defined(__x86_64__) || defined(__i386__)
+    if (n148_cpu_level() >= N148_CPU_AVX2) {
+        quantize_block_avx2(coefficients, quantization->reciprocal, zigzag);
+        return;
+    }
+#endif
 
     for (int i = 0; i < 64; i++) {
         int index = ZIGZAG[i];
@@ -207,6 +251,23 @@ typedef struct {
     long   count;
 } CoeffCache;
 
+#if defined(__x86_64__) || defined(__i386__)
+
+// Loads an interior 8x8 patch one row at a time. Edge blocks stay on the
+// scalar sampler because they need coordinate clamping for their padding.
+__attribute__((target("avx2")))
+static void load_block_avx2(const unsigned char *source, int stride,
+                            float block[64]) {
+    for (int row = 0; row < 8; row++, source += stride) {
+        __m128i bytes = _mm_loadl_epi64((const __m128i *)source);
+        _mm256_storeu_ps(
+            block + row * 8,
+            _mm256_cvtepi32_ps(_mm256_cvtepu8_epi32(bytes)));
+    }
+}
+
+#endif
+
 static int cache_fill(CoeffCache *cache, Plane *plane,
                       const ScaledQuant *quantization) {
     int blocks_x = (plane->width + 7) / 8;
@@ -223,10 +284,22 @@ static int cache_fill(CoeffCache *cache, Plane *plane,
     for (int block_y = 0; block_y < blocks_y; block_y++) {
         for (int block_x = 0; block_x < blocks_x; block_x++, index++) {
             float block[64];
-            for (int row = 0; row < 8; row++) {
-                for (int column = 0; column < 8; column++) {
-                    block[row * 8 + column] = (float)plane_sample(
-                        plane, block_x * 8 + column, block_y * 8 + row);
+            int interior = (block_x + 1) * 8 <= plane->width &&
+                           (block_y + 1) * 8 <= plane->height;
+#if defined(__x86_64__) || defined(__i386__)
+            if (interior && n148_cpu_level() >= N148_CPU_AVX2) {
+                load_block_avx2(
+                    plane->data + (long)(block_y * 8) * plane->width +
+                        block_x * 8,
+                    plane->width, block);
+            } else
+#endif
+            {
+                for (int row = 0; row < 8; row++) {
+                    for (int column = 0; column < 8; column++) {
+                        block[row * 8 + column] = (float)plane_sample(
+                            plane, block_x * 8 + column, block_y * 8 + row);
+                    }
                 }
             }
             quantize_block(block, quantization,

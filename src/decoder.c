@@ -2,11 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cpu.h"
 #include "dct.h"
 #include "decoder.h"
 #include "header.h"
 #include "huffman.h"
 #include "tables.h"
+
+#if defined(__x86_64__) || defined(__i386__)
+#include <immintrin.h>
+#endif
 
 // ============================================================
 // HUFFMAN TABLES FOR DECODING
@@ -431,17 +436,27 @@ int decode_image(unsigned char *buffer, long buffer_size,
 // YCbCr TO RGB WITH CHROMA UPSAMPLING
 // ============================================================
 
-static unsigned char clamp_byte(double value) {
-    if (value < 0.0) {
+#define CHROMA_SHIFT 4
+#define YCC_FIX_BITS 16
+#define YCC_FIX(x)   ((int)((x) * (1 << YCC_FIX_BITS) + 0.5))
+#define YCC_RGB_SHIFT (YCC_FIX_BITS + CHROMA_SHIFT)
+#define YCC_RGB_HALF  (1 << (YCC_RGB_SHIFT - 1))
+#define YCC_CENTER     (128 << CHROMA_SHIFT)
+
+static const int YCC_RCR = YCC_FIX(1.402000);
+static const int YCC_GCB = YCC_FIX(0.344136);
+static const int YCC_GCR = YCC_FIX(0.714136);
+static const int YCC_BCB = YCC_FIX(1.772000);
+
+static unsigned char clamp_byte(int value) {
+    if (value < 0) {
         return 0;
     }
-    if (value > 255.0) {
+    if (value > 255) {
         return 255;
     }
-    return (unsigned char)(value + 0.5);
+    return (unsigned char)value;
 }
-
-#define CHROMA_SHIFT 4
 
 static void expand_chroma_row(Plane *plane, int py, int dst_width,
                               int stretch_x, int stretch_y,
@@ -469,6 +484,153 @@ static void expand_chroma_row(Plane *plane, int py, int dst_width,
     }
 }
 
+static void expand_nearest_chroma_row(Plane *plane, int py, int dst_width,
+                                      double scale_x, double scale_y,
+                                      unsigned short *dst) {
+    int source_y = (int)(py * scale_y);
+    for (int x = 0; x < dst_width; x++) {
+        int source_x = (int)(x * scale_x);
+        dst[x] = (unsigned short)(
+            plane_sample(plane, source_x, source_y) << CHROMA_SHIFT);
+    }
+}
+
+static void ycbcr_to_rgb_scalar(const unsigned char *y,
+                                const unsigned short *cb,
+                                const unsigned short *cr,
+                                unsigned char *output,
+                                int count) {
+    for (int i = 0; i < count; i++) {
+        int luma = y[i] << YCC_RGB_SHIFT;
+        int blue_difference = (int)cb[i] - YCC_CENTER;
+        int red_difference = (int)cr[i] - YCC_CENTER;
+
+        int red = (luma + YCC_RCR * red_difference + YCC_RGB_HALF) >>
+                  YCC_RGB_SHIFT;
+        int green = (luma - YCC_GCB * blue_difference -
+                     YCC_GCR * red_difference + YCC_RGB_HALF) >>
+                    YCC_RGB_SHIFT;
+        int blue = (luma + YCC_BCB * blue_difference + YCC_RGB_HALF) >>
+                   YCC_RGB_SHIFT;
+
+        output[i * 3 + 0] = clamp_byte(red);
+        output[i * 3 + 1] = clamp_byte(green);
+        output[i * 3 + 2] = clamp_byte(blue);
+    }
+}
+
+#if defined(__x86_64__) || defined(__i386__)
+
+// Converts eight pixels per iteration. Each channel is packed separately,
+// spread into its RGB byte positions with pshufb, then combined with OR.
+__attribute__((target("avx2")))
+static int ycbcr_to_rgb_avx2(const unsigned char *y,
+                             const unsigned short *cb,
+                             const unsigned short *cr,
+                             unsigned char *output,
+                             int count) {
+    const __m128i mr0 = _mm_setr_epi8(
+         0,-1,-1, 1,-1,-1, 2,-1,-1, 3,-1,-1, 4,-1,-1, 5);
+    const __m128i mg0 = _mm_setr_epi8(
+        -1, 0,-1,-1, 1,-1,-1, 2,-1,-1, 3,-1,-1, 4,-1,-1);
+    const __m128i mb0 = _mm_setr_epi8(
+        -1,-1, 0,-1,-1, 1,-1,-1, 2,-1,-1, 3,-1,-1, 4,-1);
+    const __m128i mr1 = _mm_setr_epi8(
+        -1,-1, 6,-1,-1, 7,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1);
+    const __m128i mg1 = _mm_setr_epi8(
+         5,-1,-1, 6,-1,-1, 7,-1,-1,-1,-1,-1,-1,-1,-1,-1);
+    const __m128i mb1 = _mm_setr_epi8(
+        -1, 5,-1,-1, 6,-1,-1, 7,-1,-1,-1,-1,-1,-1,-1,-1);
+
+    const __m256i center = _mm256_set1_epi32(YCC_CENTER);
+    const __m256i rcr = _mm256_set1_epi32(YCC_RCR);
+    const __m256i gcb = _mm256_set1_epi32(YCC_GCB);
+    const __m256i gcr = _mm256_set1_epi32(YCC_GCR);
+    const __m256i bcb = _mm256_set1_epi32(YCC_BCB);
+    const __m256i half = _mm256_set1_epi32(YCC_RGB_HALF);
+
+    int i = 0;
+    // The second interleaved store writes eight useful bytes through a
+    // 16-byte store, so the final group is finished by the scalar tail.
+    for (; i + 16 <= count; i += 8) {
+        __m128i y_bytes = _mm_loadl_epi64((const __m128i *)(y + i));
+        __m128i cb_words = _mm_loadu_si128((const __m128i *)(cb + i));
+        __m128i cr_words = _mm_loadu_si128((const __m128i *)(cr + i));
+
+        __m256i luma = _mm256_slli_epi32(
+            _mm256_cvtepu8_epi32(y_bytes), YCC_RGB_SHIFT);
+        __m256i blue_difference = _mm256_sub_epi32(
+            _mm256_cvtepu16_epi32(cb_words), center);
+        __m256i red_difference = _mm256_sub_epi32(
+            _mm256_cvtepu16_epi32(cr_words), center);
+
+        __m256i red = _mm256_add_epi32(
+            _mm256_add_epi32(
+                luma, _mm256_mullo_epi32(red_difference, rcr)),
+            half);
+        __m256i green = _mm256_add_epi32(
+            _mm256_sub_epi32(
+                _mm256_sub_epi32(
+                    luma, _mm256_mullo_epi32(blue_difference, gcb)),
+                _mm256_mullo_epi32(red_difference, gcr)),
+            half);
+        __m256i blue = _mm256_add_epi32(
+            _mm256_add_epi32(
+                luma, _mm256_mullo_epi32(blue_difference, bcb)),
+            half);
+
+        red = _mm256_srai_epi32(red, YCC_RGB_SHIFT);
+        green = _mm256_srai_epi32(green, YCC_RGB_SHIFT);
+        blue = _mm256_srai_epi32(blue, YCC_RGB_SHIFT);
+
+        __m128i red16 = _mm_packs_epi32(
+            _mm256_castsi256_si128(red),
+            _mm256_extracti128_si256(red, 1));
+        __m128i green16 = _mm_packs_epi32(
+            _mm256_castsi256_si128(green),
+            _mm256_extracti128_si256(green, 1));
+        __m128i blue16 = _mm_packs_epi32(
+            _mm256_castsi256_si128(blue),
+            _mm256_extracti128_si256(blue, 1));
+        __m128i red8 = _mm_packus_epi16(red16, red16);
+        __m128i green8 = _mm_packus_epi16(green16, green16);
+        __m128i blue8 = _mm_packus_epi16(blue16, blue16);
+
+        unsigned char *out = output + i * 3;
+        _mm_storeu_si128(
+            (__m128i *)out,
+            _mm_or_si128(
+                _mm_or_si128(_mm_shuffle_epi8(red8, mr0),
+                              _mm_shuffle_epi8(green8, mg0)),
+                _mm_shuffle_epi8(blue8, mb0)));
+        _mm_storeu_si128(
+            (__m128i *)(out + 16),
+            _mm_or_si128(
+                _mm_or_si128(_mm_shuffle_epi8(red8, mr1),
+                              _mm_shuffle_epi8(green8, mg1)),
+                _mm_shuffle_epi8(blue8, mb1)));
+    }
+
+    return i;
+}
+
+#endif
+
+static void ycbcr_to_rgb(const unsigned char *y,
+                         const unsigned short *cb,
+                         const unsigned short *cr,
+                         unsigned char *output,
+                         int count) {
+    int converted = 0;
+#if defined(__x86_64__) || defined(__i386__)
+    if (n148_cpu_level() >= N148_CPU_AVX2) {
+        converted = ycbcr_to_rgb_avx2(y, cb, cr, output, count);
+    }
+#endif
+    ycbcr_to_rgb_scalar(y + converted, cb + converted, cr + converted,
+                        output + converted * 3, count - converted);
+}
+
 int merge_channels(Plane *y, Plane *cb, Plane *cr,
                    int smooth, Image *output) {
     int width = y->width;
@@ -487,25 +649,20 @@ int merge_channels(Plane *y, Plane *cb, Plane *cr,
         return 0;
     }
 
-    unsigned short *row_cb = NULL;
-    unsigned short *row_cr = NULL;
-    if (smooth) {
-        row_cb = (unsigned short *)malloc(
-            (size_t)width * sizeof(unsigned short));
-        row_cr = (unsigned short *)malloc(
-            (size_t)width * sizeof(unsigned short));
-        if (!row_cb || !row_cr) {
-            free(row_cb);
-            free(row_cr);
-            free(output->pixels);
-            output->pixels = NULL;
-            return 0;
-        }
+    unsigned short *row_cb = (unsigned short *)malloc(
+        (size_t)width * sizeof(unsigned short));
+    unsigned short *row_cr = (unsigned short *)malloc(
+        (size_t)width * sizeof(unsigned short));
+    if (!row_cb || !row_cr) {
+        free(row_cb);
+        free(row_cr);
+        free(output->pixels);
+        output->pixels = NULL;
+        return 0;
     }
 
     double scale_x = (double)cb->width / width;
     double scale_y = (double)cb->height / height;
-    double chroma_scale = 1.0 / (1 << CHROMA_SHIFT);
     int stretch_x = cb->width != width;
     int stretch_y = cb->height != height;
 
@@ -515,40 +672,17 @@ int merge_channels(Plane *y, Plane *cb, Plane *cr,
                               stretch_x, stretch_y, row_cb);
             expand_chroma_row(cr, pixel_y, width,
                               stretch_x, stretch_y, row_cr);
+        } else {
+            expand_nearest_chroma_row(cb, pixel_y, width,
+                                      scale_x, scale_y, row_cb);
+            expand_nearest_chroma_row(cr, pixel_y, width,
+                                      scale_x, scale_y, row_cr);
         }
 
-        for (int pixel_x = 0; pixel_x < width; pixel_x++) {
-            double luma = y->data[(long)pixel_y * width + pixel_x];
-
-            double blue_difference;
-            double red_difference;
-            if (smooth) {
-                // The 1/16 is applied here, in floating point, so the
-                // fractional part survives all the way to the colour
-                // conversion.
-                blue_difference =
-                    row_cb[pixel_x] * chroma_scale - 128.0;
-                red_difference =
-                    row_cr[pixel_x] * chroma_scale - 128.0;
-            } else {
-                int chroma_x = (int)(pixel_x * scale_x);
-                int chroma_y = (int)(pixel_y * scale_y);
-                blue_difference =
-                    plane_sample(cb, chroma_x, chroma_y) - 128.0;
-                red_difference =
-                    plane_sample(cr, chroma_x, chroma_y) - 128.0;
-            }
-
-            double red = luma + 1.402 * red_difference;
-            double green = luma - 0.344136 * blue_difference -
-                           0.714136 * red_difference;
-            double blue = luma + 1.772 * blue_difference;
-
-            long index = ((long)pixel_y * width + pixel_x) * 3;
-            output->pixels[index + 0] = clamp_byte(red);
-            output->pixels[index + 1] = clamp_byte(green);
-            output->pixels[index + 2] = clamp_byte(blue);
-        }
+        ycbcr_to_rgb(y->data + (long)pixel_y * width,
+                     row_cb, row_cr,
+                     output->pixels + (long)pixel_y * width * 3,
+                     width);
     }
 
     free(row_cb);
