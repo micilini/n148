@@ -17,7 +17,7 @@ The project is split into two planned formats:
 | **N.148i** | Static images such as photographs, illustrations, and screenshots | `.n148i` |
 | **N.148v** | Video streams and moving images | To be defined |
 
-The current milestone accelerates that complete round trip with the Arai-Agui-Nakajima (AAN) fast DCT and pre-scaled quantization tables.
+The current milestone adds runtime SIMD dispatch and AVX2 implementations of the Arai-Agui-Nakajima (AAN) forward and inverse transforms.
 
 ---
 
@@ -50,18 +50,17 @@ The decoder reverses the encoder in the exact opposite order. Plane ordering is 
 
 ---
 
-## Current AAN optimization milestone
+## Current SIMD optimization milestone
 
 This milestone adds:
 
-- `-O2` compilation for optimized release measurements;
-- scalar AAN forward and inverse transforms using `float` values;
-- five multiplications per one-dimensional forward pass instead of 64;
-- AAN scale factors folded into reciprocal quantization tables;
-- AAN scale factors and inverse normalization folded into dequantization tables;
-- multiplication in place of per-coefficient division on the encoder's hot path.
+- runtime CPU detection with CPUID and operating-system AVX state checks;
+- portable scalar fallback on processors without AVX2;
+- AVX2 AAN forward and inverse transforms that process eight columns together;
+- per-function AVX2 targeting, so the rest of the binary keeps its baseline ISA;
+- a test override for comparing scalar and vector paths in the same binary.
 
-The N.148i format and reconstructed quality remain unchanged. Small bitstream differences can occur because `lrintf()` on `float` replaces `round()` on `double` at quantization boundaries.
+The N.148i format, compressed bytes, and reconstructed quality remain unchanged between the scalar and AVX2 paths.
 
 ---
 
@@ -71,7 +70,8 @@ Encoder and decoder correctness depends on both sides using identical tables and
 
 - `tables.c` owns quantization tables, zig-zag order, Huffman definitions, and quality scaling;
 - `huffman.c` builds, validates, serializes, and reads canonical Huffman specifications;
-- `dct.c` owns the AAN scale factors and the fast forward and inverse passes;
+- `cpu.c` detects the SIMD level supported by both the processor and operating system;
+- `dct.c` owns the scalar and AVX2 AAN forward and inverse passes;
 - `encoder.c` folds AAN scaling into reciprocal quantization tables and tokenizes blocks once for both frequency counting and bit writing;
 - `decoder.c` folds AAN scaling and inverse normalization into dequantization tables before reconstruction.
 
@@ -127,7 +127,8 @@ n148/
 │   ├── ppm.h/.c        # PPM I/O, color conversion, and channel planes
 │   ├── tables.h/.c     # Shared quantization, zig-zag, and Huffman tables
 │   ├── huffman.h/.c    # Optimized Huffman construction and table I/O
-│   ├── dct.h/.c        # Shared fast AAN forward and inverse DCT
+│   ├── cpu.h/.c        # Runtime SIMD capability detection
+│   ├── dct.h/.c        # Scalar and AVX2 AAN forward and inverse DCT
 │   ├── encoder.h/.c    # Forward block and entropy pipeline
 │   └── decoder.h/.c    # Reverse pipeline and RGB reconstruction
 ├── images/
@@ -155,7 +156,7 @@ From the `src/` directory:
 
 ```bash
 gcc -std=c11 -Wall -Wextra -Wpedantic \
-  main.c header.c ppm.c tables.c dct.c huffman.c encoder.c decoder.c \
+  main.c cpu.c header.c ppm.c tables.c dct.c huffman.c encoder.c decoder.c \
   -o n148i -lm -O2
 ./n148i
 ```
@@ -200,7 +201,7 @@ Quality can be overridden at compile time without editing the source:
 
 ```bash
 gcc -std=c11 -Wall -Wextra -Wpedantic -DQUALITY=90 \
-  main.c header.c ppm.c tables.c dct.c huffman.c encoder.c decoder.c \
+  main.c cpu.c header.c ppm.c tables.c dct.c huffman.c encoder.c decoder.c \
   -o n148i -lm -O2
 ```
 
@@ -238,7 +239,7 @@ Compile with strict warnings and runtime sanitizers:
 ```bash
 gcc -std=c11 -Wall -Wextra -Wpedantic -Werror \
   -fsanitize=address,undefined -fno-omit-frame-pointer \
-  main.c header.c ppm.c tables.c dct.c huffman.c encoder.c decoder.c \
+  main.c cpu.c header.c ppm.c tables.c dct.c huffman.c encoder.c decoder.c \
   -o /tmp/n148i-sanitized -lm -O2
 ```
 
@@ -252,6 +253,7 @@ Important invariants for the reference round trip:
 - quality-50 reconstruction measures 34.70 dB PSNR;
 - normalized AAN coefficients match the separable DCT within floating-point tolerance;
 - AAN DCT followed by AAN IDCT reproduces unquantized blocks within floating-point tolerance;
+- scalar and AVX2 transforms produce interchangeable compressed and reconstructed output;
 - partial edge blocks and odd image dimensions preserve the original dimensions.
 
 ---
