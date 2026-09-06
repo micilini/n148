@@ -62,14 +62,14 @@ release](https://github.com/libjxl/libjxl/releases/tag/v0.12.0).
 uses the same libjpeg plus the local JXL libraries. The complete capture of
 `lscpu`, `uname`, packages, `ldd`, CMake, FFmpeg filters, versions, binary
 hashes, and the power profile is in
-[`benchmarks/environment.json`](benchmarks/environment.json). The binary that
+[`benchmarks/v1/environment.json`](benchmarks/v1/environment.json). The binary that
 produced the matrix has SHA-256
 `4fde6a2893d7e619837f316285927f0b7bdda568679a53aa6abc567ef59ecbc7`.
 
 ## 2. Correctness validation
 
 **Every correctness gate passed before measurement.** The full output is in
-[`benchmarks/validation.log`](benchmarks/validation.log).
+[`benchmarks/v1/validation.log`](benchmarks/v1/validation.log).
 
 | Check | Result |
 |---|---|
@@ -132,7 +132,7 @@ The corpus has 120 source-page URLs, 120 download URLs, 120 source hashes, and
 120 unique PPM hashes. No entry contains a photographed, identifiable person;
 items classified as portraits are historical paintings, engravings, or other
 2D artworks. Provenance and attribution for every file are recorded in
-[`benchmarks/corpus-manifest.json`](benchmarks/corpus-manifest.json) and
+[`benchmarks/v1/corpus-manifest.json`](benchmarks/v1/corpus-manifest.json) and
 [`images/CREDITS.txt`](images/CREDITS.txt). [Openverse describes itself as a
 search engine for openly licensed media](https://docs.openverse.org/). Because
 an aggregator does not replace legal verification of a work, the manifest also
@@ -248,7 +248,7 @@ seven JPEG points as though they had 10 threads. Deduplication removed seven
 summaries and 217 duplicate samples using the deterministic rule “highest
 replicate count; first original numbered sample,” never measured time. Both
 events, every command actually run, and every protocol refinement are recorded
-in [`benchmarks/benchmark-metadata.json`](benchmarks/benchmark-metadata.json).
+in [`benchmarks/v1/benchmark-metadata.json`](benchmarks/v1/benchmark-metadata.json).
 
 ### Quality and statistics
 
@@ -350,21 +350,21 @@ is better for every other metric.
 | JXL e7 d0.7 | 2.318 | 38.336 | 44.031 | 0.9753 | 0.99641 | 89.092 | 1.031 |
 
 Complete values are in
-[`benchmarks/analysis/rate-distortion.csv`](benchmarks/analysis/rate-distortion.csv).
+[`benchmarks/v1/analysis/rate-distortion.csv`](benchmarks/v1/analysis/rate-distortion.csv).
 
 ### Aggregate curves
 
-![RGB PSNR rate–distortion curve](benchmarks/analysis/plots/rate-distortion-psnr_rgb_db.svg)
+![RGB PSNR rate–distortion curve](benchmarks/v1/analysis/plots/rate-distortion-psnr_rgb_db.svg)
 
-![Y PSNR rate–distortion curve](benchmarks/analysis/plots/rate-distortion-psnr_y_db.svg)
+![Y PSNR rate–distortion curve](benchmarks/v1/analysis/plots/rate-distortion-psnr_y_db.svg)
 
-![SSIM rate–distortion curve](benchmarks/analysis/plots/rate-distortion-ssim.svg)
+![SSIM rate–distortion curve](benchmarks/v1/analysis/plots/rate-distortion-ssim.svg)
 
-![MS-SSIM rate–distortion curve](benchmarks/analysis/plots/rate-distortion-ms_ssim.svg)
+![MS-SSIM rate–distortion curve](benchmarks/v1/analysis/plots/rate-distortion-ms_ssim.svg)
 
-![SSIMULACRA2 rate–distortion curve](benchmarks/analysis/plots/rate-distortion-ssimulacra2.svg)
+![SSIMULACRA2 rate–distortion curve](benchmarks/v1/analysis/plots/rate-distortion-ssimulacra2.svg)
 
-![Butteraugli rate–distortion curve](benchmarks/analysis/plots/rate-distortion-butteraugli.svg)
+![Butteraugli rate–distortion curve](benchmarks/v1/analysis/plots/rate-distortion-butteraugli.svg)
 
 Against JPEG, no metric opposed N.148i on 102 of the 120 images: every metric
 reported a win or tie, and at least one reported a win. Metrics disagreed on
@@ -407,7 +407,7 @@ On axis A, the paired per-image distribution reinforces the aggregate result.
 Against JPEG, median [Q1; Q3] was -26.83% [-29.85%; -20.97%] for encode and
 -6.67% [-8.05%; -5.39%] for decode. Full dispersion, including the IQR by
 operation, is in
-[`benchmarks/analysis/timing-summary.csv`](benchmarks/analysis/timing-summary.csv).
+[`benchmarks/v1/analysis/timing-summary.csv`](benchmarks/v1/analysis/timing-summary.csv).
 
 The JXL figures pair the five points in the documented mapping; the points
 cover the same range but do not have exactly equal quality. Even the least
@@ -433,7 +433,7 @@ The medians of all 120 images at all five points were summed, representing
 | B | JXL e7 | 10 workers | 4.81 | 56.30 |
 
 Per-point values in milliseconds and MP/s are in
-[`benchmarks/analysis/timing-by-point.csv`](benchmarks/analysis/timing-by-point.csv).
+[`benchmarks/v1/analysis/timing-by-point.csv`](benchmarks/v1/analysis/timing-by-point.csv).
 Axis B did not meet the noise target and must not replace axis A in a generic
 claim such as “X% faster.”
 
@@ -465,7 +465,7 @@ instrument cycles or contention to separate those causes. The sweep's
 residual uncertainty also prevents treating the four-thread regression as an
 intrinsic law of the codec.
 
-![N.148i speedup by thread count](benchmarks/analysis/plots/n148-thread-scaling.svg)
+![N.148i speedup by thread count](benchmarks/v1/analysis/plots/n148-thread-scaling.svg)
 
 ## 8. Statistical analysis, categories, and extremes
 
@@ -504,9 +504,9 @@ The most informative extremes were:
   the corpus aggregate and per-image median are more stable.
 
 Complete tables are in
-[`category-summary.csv`](benchmarks/analysis/category-summary.csv),
-[`category-tests.csv`](benchmarks/analysis/category-tests.csv), and
-[`extremes.csv`](benchmarks/analysis/extremes.csv). Category tests are
+[`category-summary.csv`](benchmarks/v1/analysis/category-summary.csv),
+[`category-tests.csv`](benchmarks/v1/analysis/category-tests.csv), and
+[`extremes.csv`](benchmarks/v1/analysis/extremes.csv). Category tests are
 exploratory and were not corrected for multiple comparisons.
 
 ## 9. Explicit verdict
@@ -586,18 +586,18 @@ exploratory and were not corrected for multiple comparisons.
 
 Committed files:
 
-- [`benchmarks/final-results.csv`](benchmarks/final-results.csv): 5,400 rows,
+- [`benchmarks/v1/final-results.csv`](benchmarks/v1/final-results.csv): 5,400 rows,
   one per image, codec, point, and axis, without rounding;
-- [`benchmarks/timing-samples.csv`](benchmarks/timing-samples.csv): 197,440
+- [`benchmarks/v1/timing-samples.csv`](benchmarks/v1/timing-samples.csv): 197,440
   individual replicates;
-- [`benchmarks/benchmark-metadata.json`](benchmarks/benchmark-metadata.json):
+- [`benchmarks/v1/benchmark-metadata.json`](benchmarks/v1/benchmark-metadata.json):
   every command, hash, resume operation, and protocol amendment;
-- [`benchmarks/environment.json`](benchmarks/environment.json): raw environment
+- [`benchmarks/v1/environment.json`](benchmarks/v1/environment.json): raw environment
   capture;
-- [`benchmarks/analysis/`](benchmarks/analysis/): per-image BD-rate,
+- [`benchmarks/v1/analysis/`](benchmarks/v1/analysis/): per-image BD-rate,
   dispersion, categories, extremes, Wilcoxon, Kruskal–Wallis, timing, and
   scalability;
-- [`benchmarks/corpus-manifest.json`](benchmarks/corpus-manifest.json),
+- [`benchmarks/v1/corpus-manifest.json`](benchmarks/v1/corpus-manifest.json),
   [`images/MANIFEST.json`](images/MANIFEST.json), and
   [`images/CREDITS.txt`](images/CREDITS.txt);
 - [`tools/fetch_corpus.py`](tools/fetch_corpus.py),

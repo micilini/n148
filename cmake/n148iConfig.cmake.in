@@ -1,0 +1,12 @@
+# N.148i CMake package configuration
+# Copyright (c) 2026 Micilini Roll. Licensed under the MIT License.
+
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+if(NOT WIN32)
+    find_dependency(Threads)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/n148iTargets.cmake")
+check_required_components(n148i)

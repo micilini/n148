@@ -1,6 +1,6 @@
 #include "cpu.h"
 
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__)
+#if defined(__x86_64__) || defined(__i386__)
 #define N148_X86 1
 #endif
 
@@ -64,6 +64,11 @@ static int detect(void) {
 
 int n148_cpu_level(void) {
     if (forced >= 0) return forced;
+    if (detected < 0) detected = detect();
+    return detected;
+}
+
+int n148_cpu_detected_level(void) {
     if (detected < 0) detected = detect();
     return detected;
 }

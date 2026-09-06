@@ -139,7 +139,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--manifest", type=Path,
-        default=Path(__file__).resolve().parents[1] / "benchmarks" / "corpus-manifest.json",
+        default=Path(__file__).resolve().parents[1] / "benchmarks" / "v1" / "corpus-manifest.json",
     )
     parser.add_argument(
         "--output-dir", type=Path,

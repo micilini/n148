@@ -426,7 +426,7 @@ def write_documents(manifest: list[dict[str, Any]], root: Path,
         ),
         "images": manifest,
     }
-    atomic_json(root / "benchmarks" / "corpus-manifest.json", document)
+    atomic_json(root / "benchmarks" / "v1" / "corpus-manifest.json", document)
     atomic_json(root / "images" / "MANIFEST.json", document)
 
     lines = [
@@ -505,7 +505,7 @@ def main() -> int:
         raise SystemExit("per-category and min-dimension must be positive")
     root = args.root.resolve()
     images_dir = root / "images"
-    benchmark_dir = root / "benchmarks"
+    benchmark_dir = root / "benchmarks" / "v1"
     images_dir.mkdir(parents=True, exist_ok=True)
     benchmark_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = benchmark_dir / "corpus-manifest.json"

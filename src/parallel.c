@@ -3,7 +3,7 @@
 
 #define N148_MAX_THREADS 32
 
-#if defined(_WIN32)
+#if defined(_WIN32) && !defined(N148_NO_THREADS)
 #include <windows.h>
 #elif !defined(N148_NO_THREADS) && (defined(__unix__) || defined(__APPLE__))
 #include <pthread.h>

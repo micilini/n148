@@ -34,4 +34,4 @@ Each component retains its source license:
 
 Complete attribution and source hashes for the 120-image corpus are available
 in [`images/CREDITS.txt`](../../../images/CREDITS.txt) and
-[`benchmarks/corpus-manifest.json`](../../../benchmarks/corpus-manifest.json).
+[`benchmarks/v1/corpus-manifest.json`](../../../benchmarks/v1/corpus-manifest.json).

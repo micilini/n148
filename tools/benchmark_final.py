@@ -341,10 +341,10 @@ def make_phases(names: list[str], physical: list[int]) -> list[dict[str, Any]]:
 def parse_args() -> argparse.Namespace:
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--manifest", type=Path, default=root / "benchmarks/corpus-manifest.json")
+    parser.add_argument("--manifest", type=Path, default=root / "benchmarks/v1/corpus-manifest.json")
     parser.add_argument("--images-dir", type=Path, default=root / "images")
     parser.add_argument("--driver", type=Path, default=root / "benchmark-final")
-    parser.add_argument("--output-dir", type=Path, default=root / "benchmarks")
+    parser.add_argument("--output-dir", type=Path, default=root / "benchmarks" / "v1")
     parser.add_argument(
         "--ssimulacra2", type=Path,
         default=Path("/tmp/n148-libjxl-0.12.0/build/tools/ssimulacra2"),
