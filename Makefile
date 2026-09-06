@@ -1,4 +1,4 @@
-# N.148i codec and library - Linux/macOS convenience build
+# N.148i codec and library - Linux convenience build
 #
 # Copyright (c) 2026 Micilini Roll. Licensed under the MIT License.
 #
