@@ -168,9 +168,9 @@ Important parameters:
 - `--sample-ms` makes the C driver calibrate inner loops to reduce timer noise;
 - `--limit-images N` or `--image-ids ...` creates a diagnostic subset.
 
-The full published run took about 8.5 hours on the documented six-core Linux
-machine. Time varies substantially with image size, CPU, and how many series
-need more repetitions.
+The full published run took about 8.5 hours on the documented ten-core,
+twelve-thread Linux machine. Time varies substantially with image size, CPU,
+and how many series need more repetitions.
 
 The run is resumable. After every image/quality point it atomically updates
 `final-results.csv`, `timing-samples.csv`, and `benchmark-metadata.json`.

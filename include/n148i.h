@@ -97,6 +97,15 @@ typedef struct n148i_image_info {
     int optimized_huffman;
 } n148i_image_info_t;
 
+/*
+ * Thread safety in v1:
+ * - version/error queries, header parsing, and deallocation may run together;
+ * - encode and decode calls require external serialization because the codec
+ *   shares dispatch, thread configuration, histogram scratch, and a pool;
+ * - configure SIMD and nonzero thread_count values before codec work starts.
+ * Returned buffers are independently owned after an operation completes.
+ */
+
 /* Fill options with the v1 defaults: quality 50, 4:2:0, optimized Huffman. */
 N148I_API void n148i_encode_options_init(n148i_encode_options_t *options);
 
