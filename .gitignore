@@ -3,16 +3,20 @@
 /bench
 /compare
 /validate
+/benchmark-final
 /src/n148i
 /src/n148i.exe
 /gmon.out
 __pycache__/
 *.o
+.benchmark-deps/
+.venv/
 
-# Generated codec/image files (the curated fixtures in images/ are tracked).
+# Generated codec output. Benchmark inputs and datasets are intentionally
+# versioned on chore/benchmark-v1 so the published measurements are auditable.
 *.n148i
 *.pgm
-*.ppm
+output/validation-*.ppm
 
 # Editor and operating-system files
 .DS_Store

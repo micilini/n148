@@ -1,0 +1,61 @@
+<!-- Copyright (c) 2026 Micilini Roll. Licensed under the MIT License. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="390" viewBox="0 0 1400 390" role="img" aria-labelledby="title description">
+  <title id="title">N.148i encode and decode pipeline</title>
+  <desc id="description">The encoder converts PPM pixels through YCbCr, DCT, quantization, zig-zag, run-length and Huffman coding. The decoder reverses the process.</desc>
+  <rect width="1400" height="390" rx="24" fill="#0d1117"/>
+  <text x="48" y="48" fill="#f0f6fc" font-family="Inter,Segoe UI,sans-serif" font-size="27" font-weight="700">N.148i codec pipeline</text>
+  <text x="48" y="76" fill="#8b949e" font-family="Inter,Segoe UI,sans-serif" font-size="15">A complete, inspectable image codec built from first principles in C</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#8b949e"/>
+    </marker>
+    <style>
+      .label { fill: #f0f6fc; font: 600 17px Inter,Segoe UI,sans-serif; text-anchor: middle; }
+      .detail { fill: #c9d1d9; font: 13px Inter,Segoe UI,sans-serif; text-anchor: middle; }
+      .arrow { stroke: #8b949e; stroke-width: 2.5; marker-end: url(#arrow); }
+      .encode { fill: #152238; stroke: #58a6ff; stroke-width: 2; }
+      .decode { fill: #17261d; stroke: #56d364; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <text x="48" y="135" fill="#58a6ff" font-family="Inter,Segoe UI,sans-serif" font-size="15" font-weight="700">ENCODE</text>
+  <rect class="encode" x="125" y="102" width="180" height="70" rx="12"/>
+  <text class="label" x="215" y="132">P6 RGB</text><text class="detail" x="215" y="154">source pixels</text>
+  <line class="arrow" x1="305" y1="137" x2="344" y2="137"/>
+  <rect class="encode" x="355" y="102" width="180" height="70" rx="12"/>
+  <text class="label" x="445" y="132">YCbCr</text><text class="detail" x="445" y="154">4:4:4 / 4:2:2 / 4:2:0</text>
+  <line class="arrow" x1="535" y1="137" x2="574" y2="137"/>
+  <rect class="encode" x="585" y="102" width="180" height="70" rx="12"/>
+  <text class="label" x="675" y="132">8×8 DCT</text><text class="detail" x="675" y="154">AAN + AVX2 dispatch</text>
+  <line class="arrow" x1="765" y1="137" x2="804" y2="137"/>
+  <rect class="encode" x="815" y="102" width="180" height="70" rx="12"/>
+  <text class="label" x="905" y="132">Quantize</text><text class="detail" x="905" y="154">quality-scaled tables</text>
+  <line class="arrow" x1="995" y1="137" x2="1034" y2="137"/>
+  <rect class="encode" x="1045" y="102" width="180" height="70" rx="12"/>
+  <text class="label" x="1135" y="132">Zig-zag + RLE</text><text class="detail" x="1135" y="154">coefficient symbols</text>
+  <line class="arrow" x1="1225" y1="137" x2="1264" y2="137"/>
+  <rect class="encode" x="1275" y="102" width="90" height="70" rx="12"/>
+  <text class="label" x="1320" y="132">.n148i</text><text class="detail" x="1320" y="154">Huffman</text>
+
+  <text x="48" y="284" fill="#56d364" font-family="Inter,Segoe UI,sans-serif" font-size="15" font-weight="700">DECODE</text>
+  <rect class="decode" x="125" y="251" width="180" height="70" rx="12"/>
+  <text class="label" x="215" y="281">P6 RGB</text><text class="detail" x="215" y="303">reconstructed pixels</text>
+  <line class="arrow" x1="355" y1="286" x2="316" y2="286"/>
+  <rect class="decode" x="355" y="251" width="180" height="70" rx="12"/>
+  <text class="label" x="445" y="281">RGB merge</text><text class="detail" x="445" y="303">AVX2/FMA dispatch</text>
+  <line class="arrow" x1="585" y1="286" x2="546" y2="286"/>
+  <rect class="decode" x="585" y="251" width="180" height="70" rx="12"/>
+  <text class="label" x="675" y="281">IDCT</text><text class="detail" x="675" y="303">sparse + dense paths</text>
+  <line class="arrow" x1="815" y1="286" x2="776" y2="286"/>
+  <rect class="decode" x="815" y="251" width="180" height="70" rx="12"/>
+  <text class="label" x="905" y="281">Dequantize</text><text class="detail" x="905" y="303">natural-order values</text>
+  <line class="arrow" x1="1045" y1="286" x2="1006" y2="286"/>
+  <rect class="decode" x="1045" y="251" width="180" height="70" rx="12"/>
+  <text class="label" x="1135" y="281">Inverse RLE</text><text class="detail" x="1135" y="303">fused Huffman actions</text>
+  <line class="arrow" x1="1275" y1="286" x2="1236" y2="286"/>
+  <rect class="decode" x="1275" y="251" width="90" height="70" rx="12"/>
+  <text class="label" x="1320" y="281">.n148i</text><text class="detail" x="1320" y="303">bitstream</text>
+
+  <text x="48" y="362" fill="#8b949e" font-family="Inter,Segoe UI,sans-serif" font-size="13">Runtime CPU dispatch • portable scalar fallback • deterministic bitstream across validated paths</text>
+</svg>
