@@ -19,3 +19,28 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Benchmark corpus and documentation assets
+-----------------------------------------
+
+The MIT License above applies to the N.148/N.148i source code, benchmark
+programs, generated measurements and plots, and original project
+documentation authored by Micilini Roll.
+
+It does not relicense third-party photographs or artworks distributed in
+`images/corpus-*.ppm`. Each corpus image remains under the public-domain,
+CC0, or CC BY license recorded for that individual work in
+`images/CREDITS.txt` and `benchmarks/corpus-manifest.json`. The source author,
+source page, license, and license URL in those files are part of the required
+attribution and must be retained when redistributing the corpus. The committed
+PPMs are normalized adaptations: they were resized, converted to sRGB, stripped
+of metadata, and flattened where an alpha channel was present. Exact conversion
+arguments are recorded per image in the manifest.
+
+`docs/assets/readme/corpus-grid.png` is a montage derived from eight corpus
+images and remains subject to their respective source licenses and
+attributions, listed in `docs/assets/readme/README.md`.
+
+`images/example.ppm` and the README comparison images derived from it are
+project fixtures by Micilini Roll and are distributed under the MIT License
+above.

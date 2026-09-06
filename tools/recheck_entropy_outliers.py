@@ -106,15 +106,15 @@ def main() -> int:
         ("baseline", baseline_compare),
     ):
         if not binary.is_file() or not os.access(binary, os.X_OK):
-            raise SystemExit(f"binário {label} ausente ou não executável: {binary}")
+            raise SystemExit(f"missing or non-executable {label} binary: {binary}")
     if args.reps < 1:
-        raise SystemExit("reps deve ser positivo")
+        raise SystemExit("reps must be positive")
     same_binary = (
         corpus.sha256_file(candidate_compare)
         == corpus.sha256_file(baseline_compare)
     )
     if same_binary:
-        print("candidate e baseline são binários idênticos; executando uma vez por ponto")
+        print("candidate and baseline binaries are identical; running once per point")
 
     manifest = corpus.load_json(args.manifest.resolve(), [])
     manifest_by_id = {int(item["image_id"]): item for item in manifest}
@@ -127,7 +127,7 @@ def main() -> int:
         for row in load_csv(args.candidate_results.resolve())
     }
     if comparison.keys() != candidate_results.keys():
-        raise SystemExit("comparison.csv e results.csv têm matrizes diferentes")
+        raise SystemExit("comparison.csv and results.csv have different matrices")
 
     selected: set[tuple[int, int]] = {
         key
@@ -154,7 +154,7 @@ def main() -> int:
             if float(row["n148_dec_ms"]) > float(row["jpeg_dec_ms"])
         )
     if not selected:
-        raise SystemExit("nenhum ponto selecionado para rechecagem")
+        raise SystemExit("no point selected for recheck")
 
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -162,7 +162,7 @@ def main() -> int:
     completed = {(int(row["image_id"]), int(row["quality"])) for row in rows}
     unexpected = completed - selected
     if unexpected:
-        raise SystemExit(f"saída contém pontos fora da seleção: {sorted(unexpected)[:5]}")
+        raise SystemExit(f"output contains points outside the selection: {sorted(unexpected)[:5]}")
 
     work_dir = output.parent / ".recheck-work"
     work_dir.mkdir(exist_ok=True)
@@ -181,7 +181,7 @@ def main() -> int:
         for image_number, image_id in enumerate(sorted(by_image), 1):
             item = manifest_by_id.get(image_id)
             if item is None:
-                raise RuntimeError(f"imagem {image_id} ausente do manifesto")
+                raise RuntimeError(f"image {image_id} is missing from the manifest")
             qualities = sorted(by_image[image_id])
             print(
                 f"[{image_number:02d}/{len(by_image):02d}] ID {image_id:03d} "
@@ -189,7 +189,7 @@ def main() -> int:
                 flush=True,
             )
             if shutil.disk_usage(output.parent).free < minimum_free:
-                raise RuntimeError("espaço livre abaixo do limite antes do download")
+                raise RuntimeError("free space is below the limit before download")
             try:
                 corpus.download(
                     str(item["download_url"]),
@@ -210,7 +210,7 @@ def main() -> int:
                 actual = (width, height, ppm_sha256)
                 if actual != expected:
                     raise RuntimeError(
-                        f"PPM congelado divergiu para ID {image_id}: {actual} != {expected}"
+                        f"frozen PPM differs for ID {image_id}: {actual} != {expected}"
                     )
 
                 for quality_index, quality in enumerate(qualities):
@@ -251,7 +251,7 @@ def main() -> int:
                         != baseline_metrics["n148_psnr_db"]
                     ):
                         raise RuntimeError(
-                            f"saída N.148i divergiu na rechecagem ID {image_id} Q{quality}"
+                            f"N.148i output differed during recheck ID {image_id} Q{quality}"
                         )
                     rows.append(
                         {
@@ -312,7 +312,7 @@ def main() -> int:
         except OSError:
             pass
 
-    print(f"Concluído: {len(rows)}/{len(selected)} pontos rechecados em {output}")
+    print(f"Completed: {len(rows)}/{len(selected)} points rechecked in {output}")
     return 0
 
 

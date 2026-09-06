@@ -1,318 +1,403 @@
-# N.148
+<div align="center">
 
-N.148 is a handcrafted image and video codec written in C and built from first principles. The project follows the complete compression pipeline—from pixels and color channels to DCT, quantization, zig-zag ordering, run-length encoding, Huffman coding, and a portable binary file format.
+# N.148i
 
-This repository grows alongside the [Micilini codec series](https://micilini.com/conteudos/codecs), where every stage is developed and explained step by step.
+### A handcrafted image codec, built from first principles in C
 
----
+[![Language: C](https://img.shields.io/badge/language-C-00599C.svg)](src/)
+[![License: MIT](https://img.shields.io/badge/code-MIT-2ea44f.svg)](LICENSE)
+[![Corpus: 120 images](https://img.shields.io/badge/benchmark_corpus-120_images-8957e5.svg)](benchmarks/corpus-manifest.json)
+[![Validation: 0 failures](https://img.shields.io/badge/validation-0_failures-2ea44f.svg)](benchmarks/validation.log)
+[![Format: N.148i v1](https://img.shields.io/badge/format-N.148i_v1-e34c26.svg)](#n148i-v1-bitstream)
 
-## About the project
+N.148i is an experimental lossy image codec in the same design space as
+baseline JPEG: 8×8 DCT, quantization, zig-zag ordering, run-length encoding,
+and canonical Huffman coding. It adds runtime AVX2/FMA dispatch, a portable
+scalar path, optimized per-image Huffman tables, and a persistent pthread
+worker pool.
 
-N.148 is an educational exploration of how modern media codecs work internally. Instead of treating compression as a black box, it implements every building block in plain C so the transformations, trade-offs, and binary representation remain visible.
+[Read the benchmark](BENCHMARK.md) ·
+[Explore the source](src/) ·
+[Follow the codec series](https://micilini.com/conteudos/codecs)
 
-The project is split into two planned formats:
+<img src="docs/assets/readme/corpus-grid.png" alt="Eight representative images from the N.148i benchmark corpus" width="100%">
 
-| Format | Purpose | File extension |
-| --- | --- | --- |
-| **N.148i** | Static images such as photographs, illustrations, and screenshots | `.n148i` |
-| **N.148v** | Video streams and moving images | To be defined |
+<sub>Eight real inputs from the committed benchmark corpus: historical art,
+landscape, architecture, texture, smooth sky, fine detail, typography, and
+saturated color. [Image attribution](docs/assets/readme/README.md).</sub>
 
-The current milestone completes the optimization cycle with a persistent worker pool, fused Huffman decode actions, direct sparse and dense inverse reconstruction, a contiguous coefficient cache, vectorized chroma processing, and runtime-dispatched AVX2/FMA paths.
+</div>
 
----
+## What is N.148i?
 
-## Complete round trip
+N.148i began as a question: how much of an image codec can be understood by
+building every stage instead of calling a compression library?
 
-The executable now performs both directions of the codec:
+The answer in this repository is a complete encoder, decoder, and versioned
+binary format written in plain C. Color conversion, chroma subsampling, block
+transforms, quantization, entropy coding, container serialization, corruption
+checks, SIMD dispatch, and threading are all visible and testable. The project
+is educational and experimental; it is not a replacement for a standardized,
+widely deployed format.
 
-```text
-ENCODER                                  DECODER
-P6 PPM input                             N.148i v3 header
-    ↓                                         ↓
-RGB → factored fixed-point YCbCr         Fused Huffman action lookup
-    ↓                                         ↓
-4:4:4 / 4:2:2 / 4:2:0 chroma            Run-length expansion
-    ↓                                         ↓
-8 × 8 blocks + vector loads              Inverse zig-zag
-    ↓                                         ↓
-AAN DCT → AVX2 quantization              Live-only dequantization → direct IDCT stores
-    ↓                                         ↓
-Zig-zag → RLE → optimized Huffman        Block reconstruction
-    ↓                                         ↓
-Header + tables + bitstream              Bilinear chroma upsampling
-                                              ↓
-                                         AVX2/FMA YCbCr → RGB
-                                              ↓
-                                         Decoded P6 PPM
-```
+The complete creation journey is documented at
+**[micilini.com/conteudos/codecs](https://micilini.com/conteudos/codecs)**. The
+Portuguese-language series follows the codec from its first pixels and
+bitstream through six optimization milestones. The Git history mirrors that
+journey, so readers can inspect not just the final implementation, but how it
+evolved.
 
-The decoder reverses the encoder in the exact opposite order. Plane ordering is part of the format contract: all Y blocks are stored first, followed by Cb and then Cr, with an independent DC predictor for each plane.
+## How it works
 
----
+![N.148i encoding and decoding pipeline](docs/assets/readme/pipeline.svg)
 
-## Parallel and final optimization milestone
+The encoder stores all Y blocks first, followed by Cb and Cr, with an
+independent DC predictor for each plane. Entropy writing and predictor chains
+remain ordered; independent color, transform, histogram, and reconstruction
+work can run in parallel. At runtime, CPUID and operating-system AVX-state
+checks select the best supported path without making the binary unportable.
 
-This milestone adds:
+Key implementation properties:
 
-- a persistent pthread worker pool that divides independent rows into contiguous slices, lets the calling thread process the first slice, and runs tiny jobs inline;
-- runtime worker-count control, a 32-worker cap, a threadless build, and platform-aware CPU/core detection;
-- parallel color conversion, chroma subsampling, DCT/quantization, private Huffman-frequency counting with a final reduction, and RGB reconstruction;
-- intentionally sequential entropy writing/reading and DC prediction, whose ordering is part of the format;
-- a fused Huffman action table that resolves short codes, amplitudes, signs, runs, EOB, and ZRL in one lookup, backed by a 32-bit refill and canonical fallback;
-- live-only natural-order dequantization that avoids clearing and walking all 64 coefficients for DC-only blocks;
-- packed DC block fills and direct AVX2 dense IDCT stores into complete interior blocks;
-- direct sparse AVX2 IDCT reconstruction for blocks with one, two, or three surviving AC coefficients;
-- AVX2 vertical blending and horizontal 9:3:3:1 chroma stretching, processing 16 samples per pass;
-- an AVX2/FMA inverse color path selected by a new CPU capability level;
-- fused 4:2:0 conversion and subsampling that processes two source rows while they are still cache-hot;
-- batched AC Huffman writing with separate sparse and dense paths and a per-block capacity reservation;
-- an AVX2 nonzero scan plus cached AC counts, masks, and coefficients in one contiguous allocation;
-- direct AVX2 DCT dispatch after the CPU path has already been selected for a worker band;
-- a proportional initial bitstream allocation and an explicit eight-AC dense/sparse threshold;
-- factored RGB-to-YCbCr arithmetic that removes one 32-bit multiply per channel;
-- an inline merge cutoff for images below 512 × 1024 pixels, where pool handover costs more than it saves;
-- runtime CPU detection with CPUID and operating-system AVX state checks;
-- portable scalar fallback on processors without AVX2;
-- AVX2 AAN forward and inverse transforms that process eight columns together;
-- fixed-point RGB/YCbCr conversion for eight pixels at a time, with byte shuffles, saturating packing, and scalar tails;
-- contiguous AVX2 quantization followed by 16-bit zig-zag reordering, avoiding processor-dependent gather performance;
-- vector loading of complete interior 8 × 8 blocks while partial edge blocks retain clamped scalar sampling;
-- per-function AVX2 targeting, so the rest of the binary keeps its baseline ISA;
-- a test override for comparing scalar and vector paths in the same binary.
+- binary P6 PPM input and output, RGB24, with no external image wrapper;
+- selectable 4:4:4, 4:2:2, and 4:2:0 chroma;
+- scalar and AVX2 AAN forward/inverse DCT implementations;
+- AVX2/FMA color conversion and vectorized chroma processing;
+- sparse and dense inverse reconstruction paths;
+- per-image optimized canonical Huffman tables;
+- complete v1 container validation before entropy decoding;
+- deterministic compressed bytes across validated scalar, AVX2, and worker
+  counts;
+- threaded and `NOTHREADS=1` builds from the same source tree.
 
-The N.148i format, compressed bytes, reconstructed pixels, and measured PSNR remain unchanged across the validated scalar/AVX2 paths and worker counts. The FMA path preserves the non-FMA ordering for the sensitive green-channel rounding step and keeps the scalar tail for incomplete vector groups.
+## A real round trip
 
----
+This example uses the repository's 320×240 fixture, quality 50, optimized
+Huffman tables, and 4:2:0 chroma.
 
-## Shared codec modules
+| Original | N.148i reconstruction | Absolute RGB error, amplified 8× |
+|:---:|:---:|:---:|
+| ![Original test image](docs/assets/readme/example-original.png) | ![N.148i quality 50 reconstruction](docs/assets/readme/example-n148i-q50.png) | ![Eight-times amplified reconstruction error](docs/assets/readme/example-error-8x.png) |
+| 230,415-byte PPM | 2,290-byte `.n148i` | Visualization only |
 
-Encoder and decoder correctness depends on both sides using identical tables and transforms. Shared definitions therefore live in dedicated modules:
+The result is a **100.6:1 compression ratio relative to the uncompressed PPM**,
+and the reconstruction measures **34.70 dB PSNR**. PPM is intentionally used
+as the uncompressed interchange format; this ratio is not a comparison against
+PNG or another compressed source.
 
-- `tables.c` owns quantization tables, zig-zag order, Huffman definitions, and quality scaling;
-- `huffman.c` builds, validates, serializes, and reads canonical Huffman specifications;
-- `cpu.c` detects and reports the SIMD level supported by both the processor and operating system;
-- `parallel.c` owns the persistent worker pool, runtime worker count, inline fallback, and threadless build;
-- `dct.c` owns the reference, scalar AAN, AVX2 AAN, sparse, and direct-store inverse transforms;
-- `ppm.c` owns scalar and AVX2 fixed-point color separation, including the fused parallel 4:2:0 path;
-- `encoder.c` transforms block rows in parallel, caches masks/counts/coefficients contiguously, reduces private symbol counts, and keeps ordered DC/bitstream writing sequential;
-- `decoder.c` owns fused entropy actions, live-only dequantization, direct IDCT stores, vectorized chroma upsampling, and parallel AVX2/FMA reconstruction.
+## Benchmark results
 
-This prevents a table change on one side from silently making newly encoded files incompatible with the decoder.
+The final benchmark uses 120 redistributable images, five operating points per
+codec, direct in-process C APIs, disk I/O outside timed regions, CPU affinity,
+warm-up removal, interleaved codec order, and per-image paired statistics.
+N.148i and libjpeg-turbo use 4:2:0 plus optimized Huffman coding. JPEG XL 0.12.0
+is tested at effort 3 and effort 7.
 
----
+These are the measured results on an Intel Core 7 150U. They are not marketing
+estimates. The complete environment, methodology, uncertainty, per-image
+results, and limitations are in **[BENCHMARK.md](BENCHMARK.md)**.
 
-## Reference image
+### Compression efficiency at equal quality
 
-The bundled [`images/example.ppm`](images/example.ppm) is the official 320 × 240 P6 fixture from the Micilini lessons. Its original source is available at [micilini.com/assets/img/example.ppm](https://micilini.com/assets/img/example.ppm).
+BD-rate integrates each codec's rate–distortion curve over its common quality
+range. Negative values mean N.148i needs fewer bits; positive values mean it
+needs more.
 
-| Property | Value |
-| --- | ---: |
-| Dimensions | 320 × 240 pixels |
-| Pixel representation | RGB24, binary P6 |
-| File size | 230,415 bytes |
-| SHA-256 | `0bee9996ff9e43c9429a896cfba98dd183419426d28d31bbfcd65ef08ab2a404` |
+| Quality metric | vs libjpeg-turbo | vs JPEG XL e3 | vs JPEG XL e7 |
+|---|---:|---:|---:|
+| PSNR RGB | **-1.38%** | +34.59% | +38.59% |
+| PSNR Y | **-1.33%** | +41.96% | +40.98% |
+| SSIM | **-1.60%** | +17.80% | +31.72% |
+| MS-SSIM | **-1.40%** | +12.87% | +20.70% |
+| SSIMULACRA2 | **-1.39%** | +30.18% | +41.52% |
+| Butteraugli | **-1.35%** | +64.08% | +71.88% |
 
----
+The honest reading is straightforward: **N.148i is slightly more compact than
+libjpeg-turbo over this range, while JPEG XL is substantially more compact than
+N.148i.** Butteraugli also finds nine individual images where JPEG beats
+N.148i, despite N.148i winning the aggregate.
 
-## N.148i version 3 format
+| PSNR RGB rate–distortion | SSIMULACRA2 rate–distortion |
+|:---:|:---:|
+| ![PSNR RGB rate distortion curve](benchmarks/analysis/plots/rate-distortion-psnr_rgb_db.svg) | ![SSIMULACRA2 rate distortion curve](benchmarks/analysis/plots/rate-distortion-ssimulacra2.svg) |
 
-The decoder reads a 21-byte little-endian header:
+### Single-thread speed
 
-| Offset | Size | Field | Reference value | Description |
-| ---: | ---: | --- | --- | --- |
-| `0` | 5 bytes | Signature | `N148I` | Identifies the N.148i format |
-| `5` | 1 byte | Version | `3` | Current file-format version |
-| `6` | 4 bytes | Width | `320` | Original image width |
-| `10` | 4 bytes | Height | `240` | Original image height |
-| `14` | 1 byte | Quality | `50` | Quantization quality required for decoding |
-| `15` | 1 byte | Chroma | `2` | `0` = 4:4:4, `1` = 4:2:2, `2` = 4:2:0 |
-| `16` | 1 byte | Optimized | `1` | Custom Huffman tables follow the header |
-| `17` | 4 bytes | Data size | `2145` | Entropy payload size, excluding custom tables |
+The table reports the geometric mean of paired N.148i/competitor timing ratios
+over all 120 images and five mapped operating points.
 
-Reference header bytes at quality 50:
+| Competitor | N.148i encode result | N.148i decode result | Images won/tied/lost |
+|---|---:|---:|---:|
+| libjpeg-turbo | **25.84% less time** (1.349× throughput) | **6.70% less time** (1.072× throughput) | 120/0/0 encode, 118/2/0 decode |
+| JPEG XL effort 3 | **7.34× faster** | **10.79× faster** | 120/0/0 in both |
+| JPEG XL effort 7 | **89.29× faster** | **9.97× faster** | 120/0/0 in both |
 
-```text
-4e 31 34 38 49 03 40 01 00 00 f0 00 00 00 32 02 01 61 08 00 00
-```
+JPEG and N.148i produce nearly identical quality at each shared nominal point.
+JPEG XL uses a documented distance mapping that spans the same quality range,
+but its five points are not exact quality matches; the JXL speed multipliers
+must therefore not be read as interpolated timings at one exact PSNR.
 
-When `optimized` is one, four tables follow the header. Each table stores 16 code-length counts followed by the corresponding canonical symbol list. The declared payload size still lets the program reject truncated entropy data.
+### Thread scaling
 
----
+N.148i's multicore result is its clearest weakness. At quality 60, 10 threads
+reach only **1.386× encode speedup** and **1.022× decode speedup**. The best
+decode result is 1.038× at two threads.
 
-## Repository structure
+![N.148i thread scaling](benchmarks/analysis/plots/n148-thread-scaling.svg)
 
-```text
-n148/
-├── src/
-│   ├── main.c          # Runs the encode/decode cycle and reports PSNR
-│   ├── bench_cli.c     # Repeatable codec timing driver
-│   ├── validate_cli.c  # CPU-path, worker-count, and odd-edge validator
-│   ├── compare_cli.c   # Direct libjpeg-turbo comparison driver
-│   ├── header.h/.c     # N.148i v3 header serialization
-│   ├── ppm.h/.c        # PPM I/O and scalar/AVX2 RGB color separation
-│   ├── tables.h/.c     # Shared quantization, zig-zag, and Huffman tables
-│   ├── huffman.h/.c    # Optimized Huffman construction and table I/O
-│   ├── cpu.h/.c        # Runtime SIMD capability detection
-│   ├── parallel.h/.c   # Persistent pool and contiguous worker ranges
-│   ├── dct.h/.c        # Scalar and AVX2 AAN forward and inverse DCT
-│   ├── encoder.h/.c    # Parallel transform/reduction and entropy pipeline
-│   └── decoder.h/.c    # Sparse IDCT and parallel AVX2/FMA reconstruction
-├── tools/              # Corpus benchmarking and result-analysis helpers
-├── images/
-│   └── example.ppm     # Official 320 × 240 Micilini fixture
-├── output/
-│   ├── image.n148i     # Compressed N.148i v3 file
-│   └── decoded.ppm     # Reconstructed P6 image
-├── .gitattributes
-├── .gitignore
-├── Makefile
-├── LICENSE
-└── README.md
-```
+The single-thread timing target was met by 99.33% of measured series. The
+multi-thread axis retained 3.04% median residual timing uncertainty and is
+reported as indicative rather than definitive. This limitation is preserved
+in the data and discussed in the full report.
 
----
+### Do the metrics agree?
 
-## Build and run
+Not always. Against JPEG, 18 of 120 images contain a metric-level inversion.
+Against each JPEG XL effort, 13 images do. The strongest example is
+`corpus-0107.ppm`: PSNR RGB and SSIM favor N.148i against JXL effort 3, while
+SSIMULACRA2 and Butteraugli strongly favor JPEG XL. The repository reports the
+disagreement instead of selecting the metric that makes one codec look best.
 
-### Requirements
+## The complete test corpus is in this repository
 
-- A C compiler with C11 support, such as GCC or Clang
-- The standard C math library
-- POSIX threads on Unix-like systems for the default parallel build
-- No third-party codec libraries for `n148i`, `bench`, or `validate`
-- libjpeg development headers only for the optional `compare` target
+Unlike the earlier lightweight layout, this branch intentionally commits all
+120 binary P6 files under [`images/`](images/), together with the raw benchmark
+outputs. That makes the experiment inspectable without trusting a summary.
 
-From the repository root:
+| Corpus property | Value |
+|---|---:|
+| Images | 120 |
+| Categories | 8, with 15 images each |
+| Total pixels | 53,780,086 |
+| Resolution range | 129,024 to 1,324,800 pixels |
+| Public domain / CC0 | 33 |
+| CC BY 2.0 | 87 |
+| PPM data on disk | approximately 155 MiB |
+
+The eight categories cover historical portrait artwork, natural landscapes,
+urban architecture, high-frequency textures, smooth gradients, fine detail,
+sharp text/edges, and saturated/desaturated colors. No entry contains an
+identifiable photographed person.
+
+Every file has a source URL, author, license, dimensions, source hash, and
+normalized PPM hash in
+[`benchmarks/corpus-manifest.json`](benchmarks/corpus-manifest.json).
+Human-readable attribution is in [`images/CREDITS.txt`](images/CREDITS.txt).
+All PPMs are committed directly, so no separate corpus archive is required.
+
+To validate the files already present:
 
 ```bash
+python3 tools/fetch_corpus.py
+```
+
+To redownload and reconstruct every PPM from its recorded origin:
+
+```bash
+python3 tools/fetch_corpus.py --force
+```
+
+The command exits with an error if a source is unavailable, has changed, or
+does not reproduce the expected hash. ImageMagick 6.9.12-98 produced the
+committed normalization; another version is allowed to try, but the final hash
+remains authoritative.
+
+## Quick start
+
+### Core codec
+
+The core N.148i executable, timing driver, and validator have no codec-library
+dependency.
+
+```bash
+sudo apt update
+sudo apt install -y build-essential
+
 make
 ./n148i images/example.ppm 50 2
 ```
 
-Expected output at quality 50:
+Arguments are `input`, `quality` from 1 to 100, and chroma mode:
 
-```text
-=== N.148i encoder ===
-Input:    images/example.ppm  (320 x 240)
-Quality:  50
-Chroma:   4:2:0
-Huffman:  optimized for this image
+| Value | Chroma mode |
+|---:|---|
+| `0` | 4:4:4 |
+| `1` | 4:2:2 |
+| `2` | 4:2:0 |
 
-Y plane:      320 x 240
-Cb/Cr planes: 160 x 120
-
-Encoded 1800 blocks
-Huffman tables: 124 bytes stored in the file
-Entropy data:   2145 bytes
-Wrote output/image.n148i
-
-=== N.148i decoder ===
-Header:  v3, 320 x 240, quality 50, chroma 4:2:0, custom tables
-Decoded 1800 blocks, consumed 2145 of 2145 bytes
-Upsampling: bilinear
-Wrote output/decoded.ppm
-
-=== Results ===
-Original PPM:   230415 bytes (225.0 KB)
-N148i file:       2290 bytes (2.2 KB)
-Compression:  100.6:1
-PSNR:         34.70 dB
-```
-
-Both PPM files are 320 × 240 RGB24 images and can be opened by applications that support the Netpbm format.
-
----
-
-## Quality and reconstruction
-
-The executable accepts input path, quality, and chroma mode without a rebuild:
+Any committed corpus image can be used directly:
 
 ```bash
-./n148i images/example.ppm 90 2
+./n148i images/corpus-0073.ppm 60 2
 ```
 
-The compile-time defaults remain `QUALITY`, `CHROMA_MODE` (`0`, `1`, or `2`), `OPTIMIZE` (`0` or `1`), and `SMOOTH_UPSAMPLING` (`0` or `1`). Benchmark and validation drivers select the worker count at runtime with `n148_set_thread_count`; `make NOTHREADS=1` produces the inline-only build. With quality 50, optimized tables, and bilinear upsampling, the official fixture reproduces the article's chroma matrix:
+The command writes `output/image.n148i` and `output/decoded.ppm`.
 
-| Chroma | N.148i size | PSNR |
-| ---: | ---: | ---: |
-| 4:4:4 | 3,255 bytes | 36.71 dB |
-| 4:2:2 | 2,656 bytes | 35.74 dB |
-| 4:2:0 | 2,290 bytes | 34.70 dB |
-
-At 4:2:0, disabling optimized Huffman tables grows the file to 3,048 bytes without changing reconstructed pixels. Disabling bilinear upsampling keeps the same 2,290-byte file but reduces PSNR to 33.79 dB.
-
----
-
-## Corruption handling
-
-The executable validates the file before reconstruction:
-
-- an incorrect magic signature is rejected as a non-N.148i file;
-- incomplete fixed-size header fields are rejected;
-- unsupported versions, dimensions, chroma modes, or optimization flags are rejected;
-- malformed, oversubscribed, duplicate-symbol, or truncated custom Huffman tables are rejected;
-- zero or unsupported payload metadata is rejected before allocation;
-- a payload shorter than the header's declared `data_size` is rejected before entropy decoding.
-
-These checks prevent malformed container metadata and truncated files from being treated as valid image data.
-
----
-
-## Validation
-
-Build and run the repository validator:
+### Correctness suite
 
 ```bash
 make validate
 ./validate
 
+# Also verify the portable build without pthread workers.
 make clean
 make NOTHREADS=1 validate
 ./validate
 ```
 
-Important invariants for the reference round trip:
+The suite checks scalar/AVX2 byte identity, odd dimensions, all chroma modes,
+one versus four workers, bitstream round trips, and exact payload consumption.
+The recorded final run is in
+[`benchmarks/validation.log`](benchmarks/validation.log).
 
-- both directions process exactly 1,800 blocks;
-- all 2,145 entropy bytes are consumed;
-- the four custom tables occupy 124 bytes;
-- the complete N.148i file occupies 2,290 bytes;
-- `decoded.ppm` is a valid 320 × 240 P6 image;
-- quality-50 reconstruction measures 34.70 dB PSNR;
-- normalized AAN coefficients match the separable DCT within floating-point tolerance;
-- AAN DCT followed by AAN IDCT reproduces unquantized blocks within floating-point tolerance;
-- scalar and AVX2 transforms, color conversion, quantization, upsampling, and sparse reconstruction produce byte-identical compressed and reconstructed output;
-- one worker and multiple workers produce byte-identical compressed and reconstructed output;
-- partial edge blocks and odd image dimensions preserve the original dimensions.
+### libjpeg-turbo comparison
 
----
+```bash
+sudo apt install -y libjpeg-turbo8-dev pkg-config
+make compare
+./compare images/example.ppm 50 20
+```
 
-## Current limitations
+`compare` links libjpeg directly and keeps input I/O outside the repeated codec
+measurements. It uses 4:2:0 and optimized Huffman tables for both codecs.
 
-The optimized learning round trip works, with these known boundaries:
+### JPEG XL benchmark and analysis
 
-- entropy writing, entropy reading, and each plane's DC predictor chain remain sequential by construction, limiting parallel speedup according to Amdahl's law;
-- work is divided into equal slices, which can underuse performance cores when a processor mixes fast and efficiency cores;
-- optimized Huffman tables can cost more than they save for very small images, so callers must choose the appropriate mode;
-- quality evaluation currently reports PSNR but not SSIM or VMAF;
-- N.148i is a custom format and is not intended to be opened by JPEG viewers.
+Install the analysis dependencies:
 
----
+```bash
+sudo apt install -y python3-venv imagemagick libjxl-dev libjxl-tools
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install numpy scipy scikit-image Pillow sewar matplotlib
+```
 
-## Learning along with the code
+The final run requires libjxl 0.8 or newer and was produced with 0.12.0. If the
+distribution package meets that requirement, build the direct C driver with:
 
-The repository is designed to be read together with the lessons published at [micilini.com/conteudos/codecs](https://micilini.com/conteudos/codecs). The articles explain the reasoning behind every stage, while the Git history records the implementation milestone by milestone.
+```bash
+make benchmark-final
+```
 
-If you are new to codecs or binary file handling in C, start with the series and follow the repository changes in order.
+If the package is older, build the official libjxl release as documented in
+[BENCHMARK.md](BENCHMARK.md#1-environment), then point the build at that prefix:
 
----
+```bash
+make benchmark-final JXL_PREFIX=/path/to/libjxl/install
+```
+
+Run the complete matrix and regenerate every analysis table and plot:
+
+```bash
+python tools/benchmark_final.py \
+  --reps 15 --max-reps 255 --parallel-max-reps 31 \
+  --warmups 3 --sample-ms 20 --noise-target-pct 1
+
+python tools/analyze_final_benchmark.py
+python tools/collect_benchmark_environment.py
+```
+
+The metric executables `ssimulacra2` and `butteraugli_main` must be available
+from the libjxl build. Their paths can be supplied through the corresponding
+command-line options; run each tool with `--help` for the complete interface.
+
+## Build targets
+
+| Command | Purpose | Extra dependency |
+|---|---|---|
+| `make` | Build the N.148i encode/decode CLI | none |
+| `make bench` | Build the focused N.148i timing driver | none |
+| `make validate` | Build correctness and determinism tests | none |
+| `make compare` | Build the in-process JPEG comparison | libjpeg-turbo |
+| `make benchmark-final JXL_PREFIX=...` | Build N.148i/JPEG/JXL benchmark | libjpeg-turbo + libjxl |
+| `make NOTHREADS=1` | Build the inline, threadless codec | none |
+| `make clean` | Remove compiled executables | none |
+
+The default build uses `-O2` and baseline architecture flags. SIMD functions
+carry their own targets and are selected at runtime.
+
+## N.148i v1 bitstream
+
+The decoder starts with a 21-byte little-endian header:
+
+| Offset | Size | Field | Reference value |
+|---:|---:|---|---:|
+| `0` | 5 | Signature | `N148I` |
+| `5` | 1 | Version | `1` |
+| `6` | 4 | Width | `320` |
+| `10` | 4 | Height | `240` |
+| `14` | 1 | Quality | `50` |
+| `15` | 1 | Chroma | `2` |
+| `16` | 1 | Optimized-table flag | `1` |
+| `17` | 4 | Entropy payload size | `2145` |
+
+Reference header at quality 50:
+
+```text
+4e 31 34 38 49 01 40 01 00 00 f0 00 00 00 32 02 01 61 08 00 00
+```
+
+Four serialized canonical Huffman specifications follow when the optimized
+flag is set. The decoder rejects bad signatures, unsupported versions,
+impossible dimensions and modes, malformed/oversubscribed tables, truncated
+payloads, and payloads whose consumed byte count differs from the header.
+
+## Repository map
+
+```text
+n148/
+├── src/                       codec and direct benchmark CLIs
+├── tools/                     corpus, benchmark, and analysis tools
+├── images/
+│   ├── example.ppm            official lesson fixture
+│   ├── corpus-0001.ppm ...    120 committed benchmark inputs
+│   ├── CREDITS.txt            human-readable attribution
+│   └── MANIFEST.json          corpus manifest mirror
+├── benchmarks/
+│   ├── final-results.csv      5,400 unrounded summary rows
+│   ├── timing-samples.csv     197,440 individual samples
+│   ├── corpus-manifest.json   licenses, origins, and hashes
+│   ├── environment.json       captured machine and toolchain
+│   └── analysis/              BD-rate, statistics, and SVG plots
+├── docs/assets/readme/        README visuals and attribution
+├── BENCHMARK.md                complete scientific report
+├── Makefile
+└── LICENSE
+```
+
+## Known limitations
+
+- N.148i is a custom experimental format with no external decoder ecosystem.
+- Entropy order and DC prediction constrain multicore scaling.
+- The benchmark covers one mobile x86-64 CPU and mostly JPEG-origin source
+  material, spatially resampled before testing.
+- The corpus tops out at 1.325 megapixels and does not cover HDR, alpha,
+  animation, lossless coding, metadata, or progressive transmission.
+- The multi-thread timing axis did not reach the target uncertainty on this
+  machine.
+- VMAF was unavailable; PSNR RGB/Y, SSIM, MS-SSIM, SSIMULACRA2, and
+  Butteraugli were obtained.
+
+These are measurement boundaries, not footnotes to hide. See
+[the full limitations section](BENCHMARK.md#10-limitations) before quoting
+the benchmark.
 
 ## Contributing
 
-Issues and pull requests are welcome as the format develops. Keep changes focused, preserve the binary contract, and compile with strict warnings before submitting code.
+Issues and pull requests are welcome. Please keep codec changes focused,
+preserve the bitstream contract unless a version change is intentional, and
+run `make validate && ./validate` before submitting a change. Changes that
+affect compressed bytes should include an explanation and updated fixtures.
 
----
+## License and image attribution
 
-## License
+N.148/N.148i source code and original project documentation are released under
+the [MIT License](LICENSE), Copyright (c) 2026 Micilini Roll.
 
-N.148 is open-source software released under the MIT License. See [`LICENSE`](LICENSE) for details.
+The benchmark photographs and artworks are **not relicensed as MIT** merely by
+being stored here. Each remains public domain, CC0, or CC BY according to its
+entry in [`images/CREDITS.txt`](images/CREDITS.txt) and
+[`benchmarks/corpus-manifest.json`](benchmarks/corpus-manifest.json). Those
+attribution files must travel with any redistributed corpus copy. README asset
+provenance is documented separately in
+[`docs/assets/readme/README.md`](docs/assets/readme/README.md).
