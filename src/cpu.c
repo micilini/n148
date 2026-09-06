@@ -68,6 +68,11 @@ int n148_cpu_level(void) {
     return detected;
 }
 
+int n148_cpu_detected_level(void) {
+    if (detected < 0) detected = detect();
+    return detected;
+}
+
 void n148_cpu_force(int level) { forced = level; }
 
 const char *n148_cpu_name(void) {

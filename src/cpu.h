@@ -18,6 +18,9 @@
 // Detects the CPU once and caches the answer.
 int n148_cpu_level(void);
 
+// Returns the hardware-detected level, ignoring any test override.
+int n148_cpu_detected_level(void);
+
 // Human readable name of the active path, for reporting.
 const char *n148_cpu_name(void);
 

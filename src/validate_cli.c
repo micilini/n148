@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "n148i.h"
 #include "decoder.h"
 #include "encoder.h"
 #include "header.h"
@@ -237,6 +238,88 @@ static void fill_odd_image(Image *image) {
     }
 }
 
+static int validate_public_api(const Image *original,
+                               const CycleResult *reference) {
+    n148i_image_t input = {
+        original->pixels,
+        (uint32_t) original->width,
+        (uint32_t) original->height,
+        (size_t) original->width * 3
+    };
+    n148i_encode_options_t options;
+    uint8_t *encoded = NULL;
+    uint8_t *strided_encoded = NULL;
+    uint8_t *strided_pixels = NULL;
+    size_t encoded_size = 0;
+    size_t strided_size = 0;
+    n148i_image_t decoded = {0};
+    n148i_image_info_t info = {0};
+    int success = 0;
+
+    n148i_encode_options_init(&options);
+    options.quality = 50;
+    options.chroma = N148I_CHROMA_420;
+    options.optimize_huffman = 1;
+    options.thread_count = 1;
+
+    if (n148i_simd_force(N148I_SIMD_SCALAR) != N148I_OK ||
+        n148i_encode_memory(&input, &options, &encoded, &encoded_size) !=
+            N148I_OK ||
+        encoded_size != (size_t) reference->stream_size ||
+        memcmp(encoded, reference->stream, encoded_size) != 0 ||
+        n148i_read_header(encoded, encoded_size, &info) != N148I_OK ||
+        info.width != (uint32_t) original->width ||
+        info.height != (uint32_t) original->height ||
+        info.format_version != N148I_FORMAT_VERSION ||
+        info.quality != 50 || info.chroma != N148I_CHROMA_420 ||
+        !info.optimized_huffman ||
+        info.encoded_header_size + info.payload_size != encoded_size ||
+        n148i_decode_memory(encoded, encoded_size, &decoded) != N148I_OK ||
+        decoded.width != (uint32_t) reference->width ||
+        decoded.height != (uint32_t) reference->height ||
+        decoded.stride != (size_t) reference->width * 3 ||
+        memcmp(decoded.pixels, reference->decoded.pixels,
+               decoded.stride * decoded.height) != 0) {
+        goto cleanup;
+    }
+
+    size_t tight_stride = (size_t) original->width * 3;
+    size_t padded_stride = tight_stride + 7;
+    strided_pixels = (uint8_t *) malloc(
+        padded_stride * (size_t) original->height);
+    if (!strided_pixels) goto cleanup;
+    memset(strided_pixels, 0xa5, padded_stride * (size_t) original->height);
+    for (int row = 0; row < original->height; row++) {
+        memcpy(strided_pixels + (size_t) row * padded_stride,
+               original->pixels + (size_t) row * tight_stride,
+               tight_stride);
+    }
+    input.pixels = strided_pixels;
+    input.stride = padded_stride;
+    if (n148i_encode_memory(&input, &options, &strided_encoded,
+                            &strided_size) != N148I_OK ||
+        strided_size != encoded_size ||
+        memcmp(strided_encoded, encoded, encoded_size) != 0 ||
+        n148i_read_header(encoded, N148I_HEADER_SIZE - 1, &info) !=
+            N148I_ERROR_TRUNCATED_DATA) {
+        goto cleanup;
+    }
+    success = 1;
+
+cleanup:
+    printf("comparison,public_api_vs_internal,scalar,1,2,%d,%d,%zu,%u,%u,"
+           "%.12f,memory_stride_and_bitstream_identical,%s\n",
+           original->width, original->height, encoded_size,
+           info.payload_size, info.payload_size, reference->psnr,
+           success ? "PASS" : "FAIL");
+    free(strided_pixels);
+    n148i_free_buffer(strided_encoded);
+    n148i_free_image(&decoded);
+    n148i_free_buffer(encoded);
+    n148i_simd_force(N148I_SIMD_AUTO);
+    return success;
+}
+
 int main(int argc, char **argv) {
     const char *example_path =
         argc > 1 ? argv[1] : "images/example.ppm";
@@ -282,6 +365,8 @@ int main(int argc, char **argv) {
            scalar_ok ? scalar.psnr : 0.0,
            path_match ? "PASS" : "FAIL");
     if (!path_match) failures++;
+
+    if (scalar_ok && !validate_public_api(&example, &scalar)) failures++;
 
     fill_odd_image(&odd);
     if (!odd.pixels || !save_ppm(odd_path, &odd)) {
