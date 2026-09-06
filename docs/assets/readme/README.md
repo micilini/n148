@@ -33,5 +33,5 @@ Each component retains its source license:
 | `corpus-0107.ppm` | *Color Abstract*, zeevveez | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) | [Flickr](https://www.flickr.com/photos/29001414@N00/7120557115) |
 
 Complete attribution and source hashes for the 120-image corpus are available
-in [`images/CREDITOS.txt`](../../../images/CREDITOS.txt) and
+in [`images/CREDITS.txt`](../../../images/CREDITS.txt) and
 [`benchmarks/corpus-manifest.json`](../../../benchmarks/corpus-manifest.json).

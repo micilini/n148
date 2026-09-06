@@ -795,8 +795,8 @@ def plots(curves: list[dict[str, Any]], scaling: list[dict[str, Any]], directory
                 [row[metric] for row in points], marker="o", linewidth=1.8,
                 color=colors[codec], label=labels[codec],
             )
-        axis.set_xlabel("bits por pixel")
-        axis.set_ylabel(config["label"] + (" (menor é melhor)" if not config["higher"] else ""))
+        axis.set_xlabel("bits per pixel")
+        axis.set_ylabel(config["label"] + (" (lower is better)" if not config["higher"] else ""))
         axis.grid(True, alpha=0.25)
         axis.legend()
         fig.tight_layout()

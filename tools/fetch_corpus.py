@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 
-USER_AGENT = "N148-codec-benchmark/2.0 (reproducibility; github.com/micilini/n148)"
+USER_AGENT = "N148-codec-benchmark/1.0 (reproducibility; github.com/micilini/n148)"
 
 
 def sha256(path: Path) -> str:

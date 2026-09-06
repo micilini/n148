@@ -66,8 +66,8 @@ PHOTO_TERMS = re.compile(r"\b(?:photo|photograph|photographic|selfie)\b", re.I)
 
 CATEGORIES: tuple[dict[str, Any], ...] = (
     {
-        "id": "retratos_historicos",
-        "label": "Retratos (obras 2D históricas; sem pessoa fotografada)",
+        "id": "historical_portraits",
+        "label": "Historical portraits (2D artworks; no photographed person)",
         "queries": (
             'incategory:"CC-Zero" "portrait painting"',
             'incategory:"CC-Zero" portrait engraving',
@@ -77,8 +77,8 @@ CATEGORIES: tuple[dict[str, Any], ...] = (
         "portrait_art": True,
     },
     {
-        "id": "paisagens_naturais",
-        "label": "Paisagens naturais",
+        "id": "natural_landscapes",
+        "label": "Natural landscapes",
         "queries": (
             'incategory:"CC-Zero" landscape mountain',
             'incategory:"CC-Zero" landscape coast',
@@ -87,8 +87,8 @@ CATEGORIES: tuple[dict[str, Any], ...] = (
         ),
     },
     {
-        "id": "urbano_arquitetura",
-        "label": "Cenas urbanas e arquitetura",
+        "id": "urban_architecture",
+        "label": "Urban scenes and architecture",
         "queries": (
             'incategory:"CC-Zero" architecture building exterior',
             'incategory:"CC-Zero" city architecture',
@@ -97,8 +97,8 @@ CATEGORIES: tuple[dict[str, Any], ...] = (
         ),
     },
     {
-        "id": "texturas_alta_frequencia",
-        "label": "Texturas de alta frequência",
+        "id": "high_frequency_textures",
+        "label": "High-frequency textures",
         "queries": (
             'incategory:"CC-Zero" grass texture',
             'incategory:"CC-Zero" fabric texture',
@@ -108,8 +108,8 @@ CATEGORIES: tuple[dict[str, Any], ...] = (
         ),
     },
     {
-        "id": "superficies_suaves_degrades",
-        "label": "Superfícies suaves e degradês",
+        "id": "smooth_surfaces_gradients",
+        "label": "Smooth surfaces and gradients",
         "queries": (
             'incategory:"CC-Zero" blue sky clouds',
             'incategory:"CC-Zero" fog mist landscape',
@@ -118,8 +118,8 @@ CATEGORIES: tuple[dict[str, Any], ...] = (
         ),
     },
     {
-        "id": "detalhe_fino",
-        "label": "Muito detalhe fino",
+        "id": "fine_detail",
+        "label": "Fine detail",
         "queries": (
             'incategory:"CC-Zero" dense foliage',
             'incategory:"CC-Zero" aerial landscape detail',
@@ -128,8 +128,8 @@ CATEGORIES: tuple[dict[str, Any], ...] = (
         ),
     },
     {
-        "id": "texto_bordas_nitidas",
-        "label": "Texto ou bordas nítidas",
+        "id": "text_sharp_edges",
+        "label": "Text and sharp edges",
         "queries": (
             'incategory:"CC-Zero" diagram',
             'incategory:"CC-Zero" map',
@@ -138,8 +138,8 @@ CATEGORIES: tuple[dict[str, Any], ...] = (
         ),
     },
     {
-        "id": "cores_saturadas_dessaturadas",
-        "label": "Cores saturadas e dessaturadas",
+        "id": "saturated_desaturated_colors",
+        "label": "Saturated and desaturated colors",
         "queries": (
             'incategory:"CC-Zero" colorful abstract',
             'incategory:"CC-Zero" vivid colors',
@@ -167,7 +167,7 @@ def plain_text(value: Any, limit: int = 1000) -> str:
         parser.parts = [str(value or "")]
     text = html.unescape(" ".join(parser.parts))
     text = re.sub(r"\s+", " ", text).strip()
-    return text[:limit] or "não informado"
+    return text[:limit] or "not provided"
 
 
 def ext_value(info: dict[str, Any], key: str) -> str:
@@ -328,7 +328,7 @@ def acceptable(page: dict[str, Any], category: dict[str, Any],
     if not ALLOWED_LICENSE.fullmatch(license_name):
         return False, f"license:{license_name}"
     restrictions = ext_value(info, "Restrictions")
-    if restrictions != "não informado":
+    if restrictions != "not provided":
         return False, f"restrictions:{restrictions}"
     title_and_description = (
         str(page.get("title") or "") + " " + ext_value(info, "ImageDescription")
@@ -430,31 +430,33 @@ def write_documents(manifest: list[dict[str, Any]], root: Path,
     atomic_json(root / "images" / "MANIFEST.json", document)
 
     lines = [
-        "N.148i — créditos do corpus do benchmark final",
-        "Copyright (c) Micilini Roll. Projeto sob licença MIT.",
+        "N.148i — final benchmark corpus credits",
+        "Copyright (c) Micilini Roll. Project licensed under the MIT License.",
         "",
-        "Cada item abaixo conserva a licença da obra de origem; a inclusão no",
-        "repositório não relicencia fotografias ou obras de terceiros como MIT.",
-        "Os PPMs são adaptações normalizadas conforme images/MANIFEST.json:",
-        "redimensionamento, conversão sRGB, remoção de metadados e alpha.",
+        "Each item below retains the source work's license. Inclusion in this",
+        "repository does not relicense third-party photographs or artworks as MIT.",
+        "The PPMs are normalized adaptations as recorded in images/MANIFEST.json:",
+        "resizing, sRGB conversion, metadata removal, and alpha flattening.",
+        "Source titles, author names, and supplied attribution text are preserved",
+        "verbatim and may therefore contain languages other than English.",
         "",
     ]
     for item in manifest:
         lines.extend(
             [
                 item["filename"],
-                f"  Título: {item['title']}",
-                f"  Autor: {item['author']}",
-                f"  Licença: {item['license']}",
-                f"  URL da licença: {item['license_url']}",
-                f"  Página de origem: {item['source_page_url']}",
-                f"  Arquivo baixado: {item['download_url']}",
-                f"  Provedor: {item.get('provider', 'wikimedia_commons')}",
-                f"  Categoria: {item['category_label']}",
+                f"  Title: {item['title']}",
+                f"  Author: {item['author']}",
+                f"  License: {item['license']}",
+                f"  License URL: {item['license_url']}",
+                f"  Source page: {item['source_page_url']}",
+                f"  Downloaded file: {item['download_url']}",
+                f"  Provider: {item.get('provider', 'wikimedia_commons')}",
+                f"  Category: {item['category_label']}",
                 "",
             ]
         )
-    atomic_text(root / "images" / "CREDITOS.txt", "\n".join(lines))
+    atomic_text(root / "images" / "CREDITS.txt", "\n".join(lines))
 
 
 def parse_args() -> argparse.Namespace:
@@ -644,7 +646,7 @@ def main() -> int:
                 license_name = ext_value(info, "LicenseShortName")
                 license_url = ext_value(info, "LicenseUrl")
                 if (
-                    license_url == "não informado" and
+                    license_url == "not provided" and
                     license_name.lower().startswith("cc0")
                 ):
                     license_url = "https://creativecommons.org/publicdomain/zero/1.0/"
@@ -810,7 +812,7 @@ def main() -> int:
                     shutil.move(pending_ppm, destination)
                     license_name = ext_value(info, "LicenseShortName")
                     license_url = ext_value(info, "LicenseUrl")
-                    if license_url == "não informado" and license_name.lower().startswith("cc0"):
+                    if license_url == "not provided" and license_name.lower().startswith("cc0"):
                         license_url = "https://creativecommons.org/publicdomain/zero/1.0/"
                     item = {
                         "image_id": image_id,

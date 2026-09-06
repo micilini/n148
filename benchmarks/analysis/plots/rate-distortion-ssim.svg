@@ -339,8 +339,8 @@ L 469.932539 10.8
      </g>
     </g>
     <g id="text_10">
-     <!-- bits por pixel -->
-     <g transform="translate(248.430313 317.676094) scale(0.1 -0.1)">
+     <!-- bits per pixel -->
+     <g transform="translate(248.413125 317.676094) scale(0.1 -0.1)">
       <defs>
        <path id="DejaVuSans-45" d="M 3116 1747
 Q 3116 2381 2855 2742
@@ -460,25 +460,29 @@ Q 2594 391 2855 752
 Q 3116 1113 3116 1747
 z
 " transform="scale(0.015625)"/>
-       <path id="DejaVuSans-52" d="M 1959 3097
-Q 1497 3097 1228 2736
-Q 959 2375 959 1747
-Q 959 1119 1226 758
-Q 1494 397 1959 397
-Q 2419 397 2687 759
-Q 2956 1122 2956 1747
-Q 2956 2369 2687 2733
-Q 2419 3097 1959 3097
+       <path id="DejaVuSans-48" d="M 3597 1894
+L 3597 1613
+L 953 1613
+Q 991 1019 1311 708
+Q 1631 397 2203 397
+Q 2534 397 2845 478
+Q 3156 559 3463 722
+L 3463 178
+Q 3153 47 2828 -22
+Q 2503 -91 2169 -91
+Q 1331 -91 842 396
+Q 353 884 353 1716
+Q 353 2575 817 3079
+Q 1281 3584 2069 3584
+Q 2775 3584 3186 3129
+Q 3597 2675 3597 1894
 z
-M 1959 3584
-Q 2709 3584 3137 3096
-Q 3566 2609 3566 1747
-Q 3566 888 3137 398
-Q 2709 -91 1959 -91
-Q 1206 -91 779 398
-Q 353 888 353 1747
-Q 353 2609 779 3096
-Q 1206 3584 1959 3584
+M 3022 2063
+Q 3016 2534 2758 2815
+Q 2500 3097 2075 3097
+Q 1594 3097 1305 2825
+Q 1016 2553 972 2059
+L 3022 2063
 z
 " transform="scale(0.015625)"/>
        <path id="DejaVuSans-55" d="M 2631 2963
@@ -513,31 +517,6 @@ L 2834 3500
 L 3513 3500
 z
 " transform="scale(0.015625)"/>
-       <path id="DejaVuSans-48" d="M 3597 1894
-L 3597 1613
-L 953 1613
-Q 991 1019 1311 708
-Q 1631 397 2203 397
-Q 2534 397 2845 478
-Q 3156 559 3463 722
-L 3463 178
-Q 3153 47 2828 -22
-Q 2503 -91 2169 -91
-Q 1331 -91 842 396
-Q 353 884 353 1716
-Q 353 2575 817 3079
-Q 1281 3584 2069 3584
-Q 2775 3584 3186 3129
-Q 3597 2675 3597 1894
-z
-M 3022 2063
-Q 3016 2534 2758 2815
-Q 2500 3097 2075 3097
-Q 1594 3097 1305 2825
-Q 1016 2553 972 2059
-L 3022 2063
-z
-" transform="scale(0.015625)"/>
        <path id="DejaVuSans-4f" d="M 603 4863
 L 1178 4863
 L 1178 0
@@ -552,14 +531,14 @@ z
       <use xlink:href="#DejaVuSans-56" transform="translate(130.46875 0)"/>
       <use xlink:href="#DejaVuSans-3" transform="translate(182.5625 0)"/>
       <use xlink:href="#DejaVuSans-53" transform="translate(214.34375 0)"/>
-      <use xlink:href="#DejaVuSans-52" transform="translate(277.828125 0)"/>
-      <use xlink:href="#DejaVuSans-55" transform="translate(339.015625 0)"/>
-      <use xlink:href="#DejaVuSans-3" transform="translate(380.125 0)"/>
-      <use xlink:href="#DejaVuSans-53" transform="translate(411.90625 0)"/>
-      <use xlink:href="#DejaVuSans-4c" transform="translate(475.390625 0)"/>
-      <use xlink:href="#DejaVuSans-5b" transform="translate(503.171875 0)"/>
-      <use xlink:href="#DejaVuSans-48" transform="translate(559.28125 0)"/>
-      <use xlink:href="#DejaVuSans-4f" transform="translate(620.8125 0)"/>
+      <use xlink:href="#DejaVuSans-48" transform="translate(277.828125 0)"/>
+      <use xlink:href="#DejaVuSans-55" transform="translate(339.359375 0)"/>
+      <use xlink:href="#DejaVuSans-3" transform="translate(380.46875 0)"/>
+      <use xlink:href="#DejaVuSans-53" transform="translate(412.25 0)"/>
+      <use xlink:href="#DejaVuSans-4c" transform="translate(475.734375 0)"/>
+      <use xlink:href="#DejaVuSans-5b" transform="translate(503.515625 0)"/>
+      <use xlink:href="#DejaVuSans-48" transform="translate(559.625 0)"/>
+      <use xlink:href="#DejaVuSans-4f" transform="translate(621.15625 0)"/>
      </g>
     </g>
    </g>
@@ -1238,6 +1217,27 @@ Q 544 659 544 1381
 z
 M 1991 3584
 L 1991 3584
+z
+" transform="scale(0.015625)"/>
+       <path id="DejaVuSans-52" d="M 1959 3097
+Q 1497 3097 1228 2736
+Q 959 2375 959 1747
+Q 959 1119 1226 758
+Q 1494 397 1959 397
+Q 2419 397 2687 759
+Q 2956 1122 2956 1747
+Q 2956 2369 2687 2733
+Q 2419 3097 1959 3097
+z
+M 1959 3584
+Q 2709 3584 3137 3096
+Q 3566 2609 3566 1747
+Q 3566 888 3137 398
+Q 2709 -91 1959 -91
+Q 1206 -91 779 398
+Q 353 888 353 1747
+Q 353 2609 779 3096
+Q 1206 3584 1959 3584
 z
 " transform="scale(0.015625)"/>
       </defs>

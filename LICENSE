@@ -30,7 +30,7 @@ documentation authored by Micilini Roll.
 It does not relicense third-party photographs or artworks distributed in
 `images/corpus-*.ppm`. Each corpus image remains under the public-domain,
 CC0, or CC BY license recorded for that individual work in
-`images/CREDITOS.txt` and `benchmarks/corpus-manifest.json`. The source author,
+`images/CREDITS.txt` and `benchmarks/corpus-manifest.json`. The source author,
 source page, license, and license URL in those files are part of the required
 attribution and must be retained when redistributing the corpus. The committed
 PPMs are normalized adaptations: they were resized, converted to sRGB, stripped

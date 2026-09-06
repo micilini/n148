@@ -8,7 +8,7 @@
 [![License: MIT](https://img.shields.io/badge/code-MIT-2ea44f.svg)](LICENSE)
 [![Corpus: 120 images](https://img.shields.io/badge/benchmark_corpus-120_images-8957e5.svg)](benchmarks/corpus-manifest.json)
 [![Validation: 0 failures](https://img.shields.io/badge/validation-0_failures-2ea44f.svg)](benchmarks/validation.log)
-[![Format: N.148i v3](https://img.shields.io/badge/format-N.148i_v3-e34c26.svg)](#n148i-v3-bitstream)
+[![Format: N.148i v1](https://img.shields.io/badge/format-N.148i_v1-e34c26.svg)](#n148i-v1-bitstream)
 
 N.148i is an experimental lossy image codec in the same design space as
 baseline JPEG: 8×8 DCT, quantization, zig-zag ordering, run-length encoding,
@@ -65,7 +65,7 @@ Key implementation properties:
 - AVX2/FMA color conversion and vectorized chroma processing;
 - sparse and dense inverse reconstruction paths;
 - per-image optimized canonical Huffman tables;
-- complete v3 container validation before entropy decoding;
+- complete v1 container validation before entropy decoding;
 - deterministic compressed bytes across validated scalar, AVX2, and worker
   counts;
 - threaded and `NOTHREADS=1` builds from the same source tree.
@@ -182,10 +182,8 @@ identifiable photographed person.
 Every file has a source URL, author, license, dimensions, source hash, and
 normalized PPM hash in
 [`benchmarks/corpus-manifest.json`](benchmarks/corpus-manifest.json).
-Human-readable attribution is in [`images/CREDITOS.txt`](images/CREDITOS.txt).
-The same corpus is also stored as
-[`n148i-benchmark-corpus.tar.gz`](n148i-benchmark-corpus.tar.gz), SHA-256
-`e5cceed5f3ce16b6aaba52bfd2afc4f98c196b58c27c73d512c6cb5103930d19`.
+Human-readable attribution is in [`images/CREDITS.txt`](images/CREDITS.txt).
+All PPMs are committed directly, so no separate corpus archive is required.
 
 To validate the files already present:
 
@@ -282,7 +280,7 @@ make benchmark-final
 ```
 
 If the package is older, build the official libjxl release as documented in
-[BENCHMARK.md](BENCHMARK.md#1-ambiente), then point the build at that prefix:
+[BENCHMARK.md](BENCHMARK.md#1-environment), then point the build at that prefix:
 
 ```bash
 make benchmark-final JXL_PREFIX=/path/to/libjxl/install
@@ -318,14 +316,14 @@ command-line options; run each tool with `--help` for the complete interface.
 The default build uses `-O2` and baseline architecture flags. SIMD functions
 carry their own targets and are selected at runtime.
 
-## N.148i v3 bitstream
+## N.148i v1 bitstream
 
 The decoder starts with a 21-byte little-endian header:
 
 | Offset | Size | Field | Reference value |
 |---:|---:|---|---:|
 | `0` | 5 | Signature | `N148I` |
-| `5` | 1 | Version | `3` |
+| `5` | 1 | Version | `1` |
 | `6` | 4 | Width | `320` |
 | `10` | 4 | Height | `240` |
 | `14` | 1 | Quality | `50` |
@@ -336,7 +334,7 @@ The decoder starts with a 21-byte little-endian header:
 Reference header at quality 50:
 
 ```text
-4e 31 34 38 49 03 40 01 00 00 f0 00 00 00 32 02 01 61 08 00 00
+4e 31 34 38 49 01 40 01 00 00 f0 00 00 00 32 02 01 61 08 00 00
 ```
 
 Four serialized canonical Huffman specifications follow when the optimized
@@ -353,8 +351,8 @@ n148/
 ├── images/
 │   ├── example.ppm            official lesson fixture
 │   ├── corpus-0001.ppm ...    120 committed benchmark inputs
-│   ├── CREDITOS.txt           human-readable attribution
-│   └── MANIFEST.json          release-copy manifest
+│   ├── CREDITS.txt            human-readable attribution
+│   └── MANIFEST.json          corpus manifest mirror
 ├── benchmarks/
 │   ├── final-results.csv      5,400 unrounded summary rows
 │   ├── timing-samples.csv     197,440 individual samples
@@ -381,7 +379,7 @@ n148/
   Butteraugli were obtained.
 
 These are measurement boundaries, not footnotes to hide. See
-[the full limitations section](BENCHMARK.md#10-limita%C3%A7%C3%B5es) before quoting
+[the full limitations section](BENCHMARK.md#10-limitations) before quoting
 the benchmark.
 
 ## Contributing
@@ -398,7 +396,7 @@ the [MIT License](LICENSE), Copyright (c) 2026 Micilini Roll.
 
 The benchmark photographs and artworks are **not relicensed as MIT** merely by
 being stored here. Each remains public domain, CC0, or CC BY according to its
-entry in [`images/CREDITOS.txt`](images/CREDITOS.txt) and
+entry in [`images/CREDITS.txt`](images/CREDITS.txt) and
 [`benchmarks/corpus-manifest.json`](benchmarks/corpus-manifest.json). Those
 attribution files must travel with any redistributed corpus copy. README asset
 provenance is documented separately in

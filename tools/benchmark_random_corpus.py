@@ -145,12 +145,12 @@ def command_line(command: list[str]) -> str:
             timeout=10,
         )
     except (OSError, subprocess.TimeoutExpired):
-        return "indisponível"
-    return result.stdout.strip().splitlines()[0] if result.stdout.strip() else "indisponível"
+        return "unavailable"
+    return result.stdout.strip().splitlines()[0] if result.stdout.strip() else "unavailable"
 
 
 def environment_metadata(compare: Path, cpus: list[int]) -> dict[str, Any]:
-    cpu_model = "desconhecido"
+    cpu_model = "unknown"
     try:
         for line in Path("/proc/cpuinfo").read_text(encoding="utf-8").splitlines():
             if line.startswith("model name"):
@@ -166,7 +166,7 @@ def environment_metadata(compare: Path, cpus: list[int]) -> dict[str, Any]:
     try:
         governor = governor_path.read_text(encoding="ascii").strip()
     except OSError:
-        governor = "indisponível"
+        governor = "unavailable"
 
     return {
         "cpu": cpu_model,
@@ -214,7 +214,7 @@ def collect_candidates(
     while len(candidates) < target:
         attempts += 1
         if attempts > 30:
-            raise RuntimeError("a API não forneceu candidatos distintos suficientes")
+            raise RuntimeError("the API did not provide enough distinct candidates")
         for page in api_batch(max_dimension):
             pageid = page.get("pageid")
             imageinfo = page.get("imageinfo") or []
@@ -234,7 +234,7 @@ def collect_candidates(
                 "provider": "commons",
                 "pageid": int(pageid),
                 "title": page.get("title", f"File:{pageid}"),
-                "source_mime": info.get("mime", "desconhecido"),
+                "source_mime": info.get("mime", "unknown"),
                 "original_width": width,
                 "original_height": height,
                 "original_bytes": int(info.get("size") or 0),
@@ -258,7 +258,7 @@ def picsum_page(page: int, limit: int = 100) -> list[dict[str, Any]]:
     with urllib.request.urlopen(request, timeout=45) as response:
         payload = json.load(response)
     if not isinstance(payload, list):
-        raise RuntimeError("resposta inesperada da API do Lorem Picsum")
+        raise RuntimeError("unexpected response from the Lorem Picsum API")
     return payload
 
 
@@ -298,7 +298,7 @@ def collect_picsum_candidates(
             pageid = -(numeric_id + 1)
         except ValueError:
             pageid = -int(hashlib.sha256(picsum_id.encode()).hexdigest()[:15], 16)
-        author = str(item.get("author") or "autor desconhecido")
+        author = str(item.get("author") or "unknown author")
         candidate = {
             "provider": "picsum",
             "pageid": pageid,
@@ -326,7 +326,7 @@ def collect_picsum_candidates(
         if provider_count >= target:
             break
     if provider_count < target:
-        raise RuntimeError("o catálogo do Picsum não forneceu candidatos distintos suficientes")
+        raise RuntimeError("the Picsum catalog did not provide enough distinct candidates")
     return candidates
 
 
@@ -346,7 +346,7 @@ def download(
             with urllib.request.urlopen(request, timeout=60) as response, destination.open("wb") as out:
                 declared = response.headers.get("Content-Length")
                 if declared and int(declared) > maximum_bytes:
-                    raise RuntimeError(f"download declarado com {int(declared)} bytes")
+                    raise RuntimeError(f"download declared as {int(declared)} bytes")
                 while True:
                     chunk = response.read(1024 * 1024)
                     if not chunk:
@@ -354,11 +354,11 @@ def download(
                     total += len(chunk)
                     if total > maximum_bytes:
                         raise RuntimeError(
-                            f"download excedeu o limite de {maximum_bytes} bytes"
+                            f"download exceeded the {maximum_bytes}-byte limit"
                         )
                     out.write(chunk)
             if total == 0:
-                raise RuntimeError("download vazio")
+                raise RuntimeError("empty download")
             return total
         except urllib.error.HTTPError as error:
             last_error = error
@@ -379,12 +379,12 @@ def download(
             raise last_error
         delay = min(60.0, max(header_delay, retry_base_seconds * (2**attempt)))
         print(
-            f"  download temporariamente bloqueado; nova tentativa em {delay:.0f}s "
+            f"  download temporarily blocked; retrying in {delay:.0f}s "
             f"({attempt + 2}/{attempts})",
             flush=True,
         )
         time.sleep(delay)
-    raise RuntimeError("download falhou sem erro registrado")
+    raise RuntimeError("download failed without a recorded error")
 
 
 def ppm_dimensions(path: Path) -> tuple[int, int]:
@@ -392,7 +392,7 @@ def ppm_dimensions(path: Path) -> tuple[int, int]:
         while True:
             byte = handle.read(1)
             if not byte:
-                raise RuntimeError("cabeçalho PPM truncado")
+                raise RuntimeError("truncated PPM header")
             if byte == b"#":
                 handle.readline()
             elif not byte.isspace():
@@ -411,10 +411,10 @@ def ppm_dimensions(path: Path) -> tuple[int, int]:
         maximum = int(token(handle))
         data_offset = handle.tell()
     if magic != b"P6" or maximum != 255 or width <= 0 or height <= 0:
-        raise RuntimeError("PPM não é P6 RGB de 8 bits")
+        raise RuntimeError("PPM is not 8-bit P6 RGB")
     expected = data_offset + width * height * 3
     if path.stat().st_size < expected:
-        raise RuntimeError("dados PPM truncados")
+        raise RuntimeError("truncated PPM data")
     return width, height
 
 
@@ -444,10 +444,10 @@ def convert_to_ppm(source: Path, ppm: Path, max_dimension: int) -> tuple[int, in
     )
     if result.returncode != 0:
         message = result.stderr.strip().replace("\n", " ")
-        raise RuntimeError(f"conversão falhou: {message[:400]}")
+        raise RuntimeError(f"conversion failed: {message[:400]}")
     width, height = ppm_dimensions(ppm)
     if max(width, height) > max_dimension:
-        raise RuntimeError(f"redimensionamento excedeu {max_dimension}px: {width}x{height}")
+        raise RuntimeError(f"resize exceeded {max_dimension}px: {width}x{height}")
     return width, height
 
 
@@ -496,7 +496,7 @@ def benchmark_point(
     )
     if result.returncode != 0:
         message = (result.stderr or result.stdout).strip().replace("\n", " ")
-        raise RuntimeError(f"compare retornou {result.returncode}: {message[:500]}")
+        raise RuntimeError(f"compare returned {result.returncode}: {message[:500]}")
 
     parsed: dict[str, dict[str, float | int]] = {}
     stages: tuple[float, float, float] | None = None
@@ -515,14 +515,14 @@ def benchmark_point(
         if stage_match:
             stages = tuple(float(value) for value in stage_match.groups())
     if set(parsed) != {"N148i", "JPEG"}:
-        raise RuntimeError(f"saída do comparador não reconhecida: {result.stdout[:500]!r}")
+        raise RuntimeError(f"unrecognized comparator output: {result.stdout[:500]!r}")
     if stages is None:
-        raise RuntimeError(f"estágios do decoder não reconhecidos: {result.stdout[:500]!r}")
+        raise RuntimeError(f"unrecognized decoder stages: {result.stdout[:500]!r}")
 
     n148 = parsed["N148i"]
     jpeg = parsed["JPEG"]
     if not all(float(n148[key]) > 0 and float(jpeg[key]) > 0 for key in ("enc", "dec", "bytes")):
-        raise RuntimeError("comparador produziu tempo ou tamanho não positivo")
+        raise RuntimeError("comparator produced a non-positive time or size")
     return {
         "n148_enc_ms": n148["enc"],
         "n148_dec_ms": n148["dec"],
@@ -547,7 +547,7 @@ def solve_linear(matrix: list[list[float]], vector: list[float]) -> list[float]:
     for column in range(size):
         pivot = max(range(column, size), key=lambda row: abs(augmented[row][column]))
         if abs(augmented[pivot][column]) < 1e-14:
-            raise ValueError("curva singular")
+            raise ValueError("singular curve")
         augmented[column], augmented[pivot] = augmented[pivot], augmented[column]
         divisor = augmented[column][column]
         augmented[column] = [value / divisor for value in augmented[column]]
@@ -582,7 +582,7 @@ def bd_rate(
         values: list[float] = []
         for psnr, rate in points:
             if rate <= 0 or not math.isfinite(psnr + rate):
-                raise ValueError("ponto inválido")
+                raise ValueError("invalid point")
             x = (psnr - center) / scale
             matrix.append([1.0, x, x * x, x * x * x])
             values.append(math.log(rate))
@@ -617,15 +617,15 @@ def pooled_psnr(rows: Iterable[dict[str, str]], prefix: str) -> float:
 def signed_percent(ratio: float) -> str:
     value = (ratio - 1.0) * 100.0
     sign = "+" if value > 0 else "−" if value < 0 else ""
-    return f"{sign}{abs(value):.2f}%".replace(".", ",")
+    return f"{sign}{abs(value):.2f}%"
 
 
 def decimal(value: float, places: int = 3) -> str:
-    return f"{value:.{places}f}".replace(".", ",")
+    return f"{value:.{places}f}"
 
 
 def integer(value: float | int) -> str:
-    return f"{int(round(value)):,}".replace(",", ".")
+    return f"{int(round(value)):,}"
 
 
 def escape_table(value: str) -> str:
@@ -640,12 +640,12 @@ def short_title(title: str, limit: int = 48) -> str:
 
 def metric_outcome(n148: float, jpeg: float, kind: str) -> str:
     if n148 == jpeg:
-        return "empate"
+        return "tie"
     if n148 < jpeg:
-        adjective = "menor" if kind == "size" else "mais rápido"
+        adjective = "smaller" if kind == "size" else "faster"
         amount = decimal((1.0 - n148 / jpeg) * 100.0, 2)
         return f"N.148i {amount}% {adjective}"
-    adjective = "menor" if kind == "size" else "mais rápido"
+    adjective = "smaller" if kind == "size" else "faster"
     amount = decimal((1.0 - jpeg / n148) * 100.0, 2)
     return f"JPEG {amount}% {adjective}"
 
@@ -771,48 +771,48 @@ def render_report(
     lines: list[str] = []
     lines.extend(
         [
-            "# JPEG vs N.148i em 100 imagens aleatórias",
+            "# JPEG vs N.148i on a random image corpus",
             "",
-            f"**Execução concluída:** {metadata.get('finished_at', now_iso())}",
+            f"**Run completed:** {metadata.get('finished_at', now_iso())}",
             "",
-            "## Veredito",
+            "## Verdict",
             "",
-            f"No agregado das {len(manifest)} imagens e {point_count} pontos de qualidade, "
-            f"o tamanho ficou em **{metric_outcome(total_n_size, total_j_size, 'size')}**, "
-            f"o encode em **{metric_outcome(total_n_enc, total_j_enc, 'time')}** e "
-            f"o decode em **{metric_outcome(total_n_dec, total_j_dec, 'time')}**.",
+            f"Across {len(manifest)} images and {point_count} quality points, "
+            f"size was **{metric_outcome(total_n_size, total_j_size, 'size')}**, "
+            f"encode was **{metric_outcome(total_n_enc, total_j_enc, 'time')}**, and "
+            f"decode was **{metric_outcome(total_n_dec, total_j_dec, 'time')}**.",
             "",
         ]
     )
     if corpus_bd is not None:
-        direction = "favorece o N.148i" if corpus_bd < 0 else "favorece o JPEG"
+        direction = "favors N.148i" if corpus_bd < 0 else "favors JPEG"
         lines.append(
-            f"A comparação ajustada para a mesma qualidade deu **BD-rate de {decimal(corpus_bd, 2)}%** "
-            f"para N.148i contra JPEG ({direction}; negativo favorece N.148i)."
+            f"The same-quality comparison produced **{decimal(corpus_bd, 2)}% BD-rate** "
+            f"for N.148i versus JPEG ({direction}; negative favors N.148i)."
         )
         lines.append("")
 
     lines.extend(
         [
-            "## Placar agregado",
+            "## Aggregate scorecard",
             "",
-            "| Métrica | N.148i | JPEG | Δ N/J | V/E/D do N.148i |",
+            "| Metric | N.148i | JPEG | N/J delta | N.148i W/T/L |",
             "| --- | ---: | ---: | ---: | ---: |",
-            f"| Tamanho acumulado | {integer(total_n_size)} B | {integer(total_j_size)} B | {signed_percent(total_n_size / total_j_size)} | {size_record[0]}/{size_record[1]}/{size_record[2]} |",
-            f"| Soma das medianas de encode | {decimal(total_n_enc)} ms | {decimal(total_j_enc)} ms | {signed_percent(total_n_enc / total_j_enc)} | {enc_record[0]}/{enc_record[1]}/{enc_record[2]} |",
-            f"| Soma das medianas de decode | {decimal(total_n_dec)} ms | {decimal(total_j_dec)} ms | {signed_percent(total_n_dec / total_j_dec)} | {dec_record[0]}/{dec_record[1]}/{dec_record[2]} |",
+            f"| Total size | {integer(total_n_size)} B | {integer(total_j_size)} B | {signed_percent(total_n_size / total_j_size)} | {size_record[0]}/{size_record[1]}/{size_record[2]} |",
+            f"| Sum of encode medians | {decimal(total_n_enc)} ms | {decimal(total_j_enc)} ms | {signed_percent(total_n_enc / total_j_enc)} | {enc_record[0]}/{enc_record[1]}/{enc_record[2]} |",
+            f"| Sum of decode medians | {decimal(total_n_dec)} ms | {decimal(total_j_dec)} ms | {signed_percent(total_n_dec / total_j_dec)} | {dec_record[0]}/{dec_record[1]}/{dec_record[2]} |",
             "",
-            f"O N.148i levou tamanho/encode/decode ao mesmo tempo em **{triple_wins}/{point_count} pontos**. "
-            f"Agregando as quatro qualidades por imagem, venceu em tamanho em **{image_size_wins}/{len(manifest)}**, "
-            f"encode em **{image_enc_wins}/{len(manifest)}** e decode em **{image_dec_wins}/{len(manifest)}** imagens.",
+            f"N.148i won size, encode, and decode simultaneously at **{triple_wins}/{point_count} points**. "
+            f"After aggregating all qualities by image, it won size on **{image_size_wins}/{len(manifest)}**, "
+            f"encode on **{image_enc_wins}/{len(manifest)}**, and decode on **{image_dec_wins}/{len(manifest)}** images.",
             "",
-            f"No mesmo número de qualidade, o PSNR do N.148i foi maior em {psnr_wins}/{point_count}, "
-            f"igual em {psnr_ties}/{point_count} e menor em {point_count - psnr_wins - psnr_ties}/{point_count} pontos. "
-            "O BD-rate abaixo é a medida mais justa de eficiência de compressão porque compensa essa diferença.",
+            f"At the same nominal quality number, N.148i PSNR was higher at {psnr_wins}/{point_count}, "
+            f"equal at {psnr_ties}/{point_count}, and lower at {point_count - psnr_wins - psnr_ties}/{point_count} points. "
+            "The BD-rate result below is the fairer compression-efficiency measure because it accounts for this difference.",
             "",
-            "## Resultado por qualidade",
+            "## Results by quality",
             "",
-            "| Q | Tamanho Δ | Encode Δ | Decode Δ | PSNR N/J | Vitórias tamanho | Vitórias encode | Vitórias decode |",
+            "| Q | Size delta | Encode delta | Decode delta | PSNR N/J | Size wins | Encode wins | Decode wins |",
             "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
         ]
     )
@@ -831,27 +831,27 @@ def render_report(
         lines.extend(
             [
                 "",
-                "## Eficiência na mesma qualidade visual",
+                "## Efficiency at the same measured quality",
                 "",
-                f"- BD-rate do corpus (curvas agregadas): **{decimal(corpus_bd or 0.0, 2)}%**.",
-                f"- Mediana do BD-rate por imagem: **{decimal(statistics.median(image_bd_values), 2)}%**.",
-            f"- Média do BD-rate por imagem: **{decimal(statistics.mean(image_bd_values), 2)}%** ({len(image_bd_values)}/{len(manifest)} curvas válidas).",
+                f"- Corpus BD-rate (aggregate curves): **{decimal(corpus_bd or 0.0, 2)}%**.",
+                f"- Median per-image BD-rate: **{decimal(statistics.median(image_bd_values), 2)}%**.",
+                f"- Mean per-image BD-rate: **{decimal(statistics.mean(image_bd_values), 2)}%** ({len(image_bd_values)}/{len(manifest)} valid curves).",
                 "",
-                f"BD-rate integra as curvas de {len(qualities)} pontos "
-                f"(Q{'/'.join(map(str, qualities))}) no intervalo de PSNR comum. "
-                "Valor negativo significa menos bits para o N.148i na mesma qualidade medida por PSNR.",
+                f"BD-rate integrates the {len(qualities)}-point curves "
+                f"(Q{'/'.join(map(str, qualities))}) over their common PSNR interval. "
+                "A negative value means fewer N.148i bits at the same PSNR-measured quality.",
             ]
         )
 
     lines.extend(
         [
             "",
-            "## Tabela das 100 imagens",
+            f"## Table of all {len(manifest)} images",
             "",
-            "As três colunas Δ usam `(N.148i/JPEG − 1)`; portanto, **negativo favorece N.148i**. "
-            "`V T/E/D` mostra em quantas das quatro qualidades ele venceu em tamanho, encode e decode.",
+            "The three delta columns use `(N.148i/JPEG − 1)`; therefore, **negative favors N.148i**. "
+            f"`W S/E/D` shows at how many of the {len(qualities)} qualities it won size, encode, and decode.",
             "",
-            "| ID / imagem | Dimensão | Δ tamanho | Δ encode | Δ decode | BD-rate | V T/E/D |",
+            "| ID / image | Dimensions | Size delta | Encode delta | Decode delta | BD-rate | W S/E/D |",
             "| --- | ---: | ---: | ---: | ---: | ---: | ---: |",
         ]
     )
@@ -860,7 +860,7 @@ def render_report(
         label = escape_table(short_title(str(source["title"])))
         url = str(source.get("description_url") or source.get("original_url") or "")
         linked = f"[{item['image_id']:03d} — {label}](<{url}>)" if url else f"{item['image_id']:03d} — {label}"
-        bd_text = "n/d" if item["bd_rate"] is None else f"{decimal(item['bd_rate'], 2)}%"
+        bd_text = "n/a" if item["bd_rate"] is None else f"{decimal(item['bd_rate'], 2)}%"
         lines.append(
             f"| {linked} | {source['width']}×{source['height']} | "
             f"{signed_percent(item['size_ratio'])} | {signed_percent(item['enc_ratio'])} | "
@@ -872,74 +872,74 @@ def render_report(
     environment = metadata["environment"]
     if config.get("frozen_manifest_sha256"):
         selection_note = (
-            "- Reexecução A/B: ordem e identidade copiadas de um manifesto anterior; "
-            "cada PPM foi aceito somente após repetir dimensão e SHA-256. "
-            f"SHA-256 do manifesto-fonte: `{config['frozen_manifest_sha256']}`."
+            "- A/B rerun: order and identity copied from a previous manifest; "
+            "each PPM was accepted only after its dimensions and SHA-256 were reproduced. "
+            f"Source-manifest SHA-256: `{config['frozen_manifest_sha256']}`."
         )
         candidate_description = (
-            "- `candidates.json`: cópia ordenada do manifesto congelado usado na reexecução."
+            "- `candidates.json`: ordered copy of the frozen manifest used for the rerun."
         )
     else:
         selection_note = (
-            "- Seleção: candidatos aleatórios foram congelados em `candidates.json` "
-            "à medida que a execução avançou."
+            "- Selection: random candidates were frozen in `candidates.json` "
+            "as the run progressed."
         )
         candidate_description = (
-            "- `candidates.json`: sequência de candidatos congelada antes/durante a execução."
+            "- `candidates.json`: candidate sequence frozen before/during the run."
         )
     baseline_description = (
-        "- `baseline-results.csv`: os mesmos pontos medidos com o binário-base, "
-        "alternando qual revisão rodou primeiro."
+        "- `baseline-results.csv`: the same points measured with the baseline binary, "
+        "alternating which revision ran first."
         if config.get("baseline_compare_sha256")
-        else "- `baseline-results.csv`: não gerado nesta execução."
+        else "- `baseline-results.csv`: not generated in this run."
     )
     max_work = int(metadata.get("peak_temporary_bytes", 0))
     retained = sum(
         path.stat().st_size
         for path in output_dir.iterdir()
-        if path.is_file() and path.name != "RELATORIO.md"
+        if path.is_file() and path.name != "REPORT.md"
     )
     lines.extend(
         [
             "",
-            "## Metodologia",
+            "## Methodology",
             "",
-            f"- Corpus: {provider_counts.get('commons', 0)} páginas do namespace `File:` escolhidas pela [API Random]({API_RANDOM_DOC}) do Wikimedia Commons "
-            f"(metadados/thumbnails pela [API Imageinfo]({API_IMAGEINFO_DOC})) e {provider_counts.get('picsum', 0)} fotos sorteadas do catálogo oficial do [Lorem Picsum]({PICSUM_DOC}). "
-            f"No Commons foram aceitos bitmaps com ambos os lados originais ≥ {config['min_dimension']} px que puderam ser baixados e convertidos.",
+            f"- Corpus: {provider_counts.get('commons', 0)} `File:` namespace pages selected by the Wikimedia Commons [Random API]({API_RANDOM_DOC}) "
+            f"(metadata/thumbnails from the [Imageinfo API]({API_IMAGEINFO_DOC})) and {provider_counts.get('picsum', 0)} photos sampled from the official [Lorem Picsum]({PICSUM_DOC}) catalog. "
+            f"Commons bitmaps were accepted when both original dimensions were ≥ {config['min_dimension']} px and the file could be downloaded and converted.",
             selection_note,
-            f"- Normalização: primeiro frame, orientação EXIF aplicada, sRGB, transparência sobre branco, PPM RGB P6 de 8 bits, sem ampliar e limitado a {config['max_dimension']}×{config['max_dimension']} px.",
-            f"- Matriz: {len(manifest)} imagens × qualidades {','.join(map(str, qualities))}; 4:2:0, Huffman otimizado, {config['reps']} repetições medidas por ponto mais aquecimento interno.",
-            f"- Afinidade de CPU: `taskset` no conjunto lógico `{config.get('cpu_set', config['cpu'])}`; N.148i com {config['threads']} thread(s). O libjpeg-turbo permanece single-thread e sua thread é fixada no P-core lógico {config.get('jpeg_cpu', config['cpu'])}; as mudanças de afinidade ficam fora da janela cronometrada. O driver alterna qual codec roda primeiro.",
-            "- Cronômetro: encode/decode em memória; download, conversão, I/O e cálculo do PSNR ficam fora do tempo. Cada número de tempo é a mediana.",
-            "- Validação: cada ponto só é aceito se ambos codificarem, decodificarem, preservarem as dimensões e produzirem PSNR/tamanho válidos.",
-            f"- Ambiente: {environment['cpu']}; governor `{environment['cpu_governor']}`; {environment['compiler']}; libjpeg-turbo {environment['libjpeg_turbo_package']}.",
-            f"- Binário `compare`: SHA-256 `{environment['compare_sha256']}`.",
+            f"- Normalization: first frame, EXIF orientation applied, sRGB, transparency over white, 8-bit RGB P6 PPM, no upscaling, limited to {config['max_dimension']}×{config['max_dimension']} px.",
+            f"- Matrix: {len(manifest)} images × qualities {','.join(map(str, qualities))}; 4:2:0, optimized Huffman, {config['reps']} measured replicates per point plus internal warm-up.",
+            f"- CPU affinity: `taskset` on logical set `{config.get('cpu_set', config['cpu'])}`; N.148i with {config['threads']} thread(s). libjpeg-turbo remains single-threaded and is pinned to logical P-core {config.get('jpeg_cpu', config['cpu'])}; affinity changes remain outside the timed window. The driver alternates which codec runs first.",
+            "- Timer: in-memory encode/decode; download, conversion, I/O, and PSNR calculation remain outside the timed window. Every timing result is a median.",
+            "- Validation: a point is accepted only if both codecs encode, decode, preserve dimensions, and produce valid PSNR and size.",
+            f"- Environment: {environment['cpu']}; governor `{environment['cpu_governor']}`; {environment['compiler']}; libjpeg-turbo {environment['libjpeg_turbo_package']}.",
+            f"- `compare` binary: SHA-256 `{environment['compare_sha256']}`.",
             "",
-            "## Uso de disco e rastreabilidade",
+            "## Disk use and traceability",
             "",
-            f"O maior par fonte+PPM observado ocupou cerca de **{decimal(max_work / 1048576.0, 1)} MiB**. "
-            "Depois de concluir as quatro qualidades de cada imagem, tanto o download quanto o PPM foram apagados. "
-            f"Os artefatos permanentes (sem este relatório) ocupam cerca de {decimal(retained / 1048576.0, 2)} MiB.",
+            f"The largest observed source+PPM pair occupied about **{decimal(max_work / 1048576.0, 1)} MiB**. "
+            f"After completing all {len(qualities)} qualities for each image, both the download and PPM were deleted. "
+            f"Permanent artifacts (excluding this report) occupy about {decimal(retained / 1048576.0, 2)} MiB.",
             "",
-            "Arquivos preservados:",
+            "Preserved files:",
             "",
-            "- `results.csv`: os 400 pontos brutos.",
+            f"- `results.csv`: all {point_count} raw points.",
             baseline_description,
-            "- `manifest.json`: títulos, URLs, dimensões e hashes das 100 entradas aceitas.",
+            f"- `manifest.json`: titles, URLs, dimensions, and hashes for the {len(manifest)} accepted entries.",
             candidate_description,
-            "- `metadata.json`: configuração, ambiente e hash do binário.",
-            "- `failures.json`: candidatos descartados e motivo, se houver.",
+            "- `metadata.json`: configuration, environment, and binary hash.",
+            "- `failures.json`: rejected candidates and reasons, when applicable.",
             "",
-            "## Limitações",
+            "## Limitations",
             "",
-            "- É uma amostra aleatória condicionada, não um corpus acadêmico balanceado; fotografias, scans, mapas e arte gráfica podem aparecer.",
-            "- As entradas servidas pelo Commons/Picsum podem carregar artefatos de uma compressão anterior. Ambos os codecs, porém, recebem exatamente o mesmo PPM decodificado.",
-            "- Mesmo `Q` não implica qualidade idêntica entre formatos; por isso o relatório separa o placar no mesmo Q do BD-rate na mesma qualidade medida.",
-            "- Tempos valem para esta máquina, este binário e esta versão do libjpeg-turbo; uma única execução de desktop ainda sofre ruído de frequência, temperatura e tarefas do sistema.",
-            "- PSNR não captura sozinho toda a qualidade perceptual, e o ensaio cobre apenas 4:2:0.",
+            "- This is a conditioned random sample, not a balanced academic corpus; photographs, scans, maps, and graphic art may appear.",
+            "- Inputs served by Commons/Picsum may contain artifacts from earlier compression. Both codecs nevertheless receive exactly the same decoded PPM.",
+            "- The same `Q` does not imply equal quality across formats; the report therefore separates the same-Q scorecard from same-measured-quality BD-rate.",
+            "- Timings apply to this machine, binary, and libjpeg-turbo version; a single desktop run remains subject to frequency, temperature, and system-task noise.",
+            "- PSNR alone does not capture all perceptual quality, and the experiment covers only 4:2:0.",
             "",
-            f"Candidatos rejeitados durante coleta/processamento: **{len(failures)}**.",
+            f"Candidates rejected during collection/processing: **{len(failures)}**.",
             "",
         ]
     )
@@ -997,33 +997,33 @@ def parse_cpu_set(value: str) -> list[int]:
         else:
             match = re.fullmatch(r"([0-9]+)-([0-9]+)", item)
             if match is None:
-                raise ValueError(f"lista de CPUs inválida: {value!r}")
+                raise ValueError(f"invalid CPU list: {value!r}")
             first, last = (int(part) for part in match.groups())
             if last < first:
-                raise ValueError(f"intervalo de CPUs invertido: {item!r}")
+                raise ValueError(f"reversed CPU range: {item!r}")
             values = list(range(first, last + 1))
         for cpu in values:
             if cpu in cpus:
-                raise ValueError(f"CPU lógico repetido: {cpu}")
+                raise ValueError(f"repeated logical CPU: {cpu}")
             cpus.append(cpu)
     if not cpus:
-        raise ValueError("a lista de CPUs está vazia")
+        raise ValueError("the CPU list is empty")
     return cpus
 
 
 def main() -> int:
     args = parse_args()
     if args.count < 1 or args.reps < 1 or args.threads < 1 or not args.qualities:
-        raise SystemExit("count, reps, threads e qualities devem ser positivos")
+        raise SystemExit("count, reps, threads, and qualities must be positive")
     if any(quality < 1 or quality > 100 for quality in args.qualities):
-        raise SystemExit("qualidade fora do intervalo 1..100")
+        raise SystemExit("quality is outside the 1..100 range")
     try:
         cpu_ids = parse_cpu_set(args.cpu_set or str(args.cpu))
     except ValueError as error:
         raise SystemExit(str(error)) from error
     if len(cpu_ids) < args.threads:
         raise SystemExit(
-            f"--cpu-set oferece {len(cpu_ids)} CPU(s), menos que "
+            f"--cpu-set provides {len(cpu_ids)} CPU(s), fewer than "
             f"--threads={args.threads}"
         )
     try:
@@ -1033,14 +1033,14 @@ def main() -> int:
     unavailable_cpus = [cpu for cpu in cpu_ids if cpu not in allowed_cpus]
     if unavailable_cpus:
         raise SystemExit(
-            "CPU(s) fora da afinidade permitida: "
+            "CPU(s) outside the allowed affinity: "
             + ", ".join(map(str, unavailable_cpus))
         )
     cpu_set = ",".join(map(str, cpu_ids))
 
     compare = args.compare.resolve()
     if not compare.is_file() or not os.access(compare, os.X_OK):
-        raise SystemExit(f"comparador ausente ou não executável: {compare}")
+        raise SystemExit(f"missing or non-executable comparator: {compare}")
     baseline_compare = (
         args.baseline_compare.resolve() if args.baseline_compare is not None else None
     )
@@ -1048,10 +1048,10 @@ def main() -> int:
         not baseline_compare.is_file() or not os.access(baseline_compare, os.X_OK)
     ):
         raise SystemExit(
-            f"comparador-base ausente ou não executável: {baseline_compare}"
+            f"missing or non-executable baseline comparator: {baseline_compare}"
         )
     if shutil.which("convert") is None or shutil.which("taskset") is None:
-        raise SystemExit("convert (GraphicsMagick) e taskset são obrigatórios")
+        raise SystemExit("convert (GraphicsMagick) and taskset are required")
 
     frozen_manifest_path = (
         args.frozen_manifest.resolve() if args.frozen_manifest is not None else None
@@ -1060,28 +1060,28 @@ def main() -> int:
     frozen_candidates: list[dict[str, Any]] | None = None
     if frozen_manifest_path is not None:
         if not frozen_manifest_path.is_file():
-            raise SystemExit(f"manifesto congelado ausente: {frozen_manifest_path}")
+            raise SystemExit(f"missing frozen manifest: {frozen_manifest_path}")
         loaded_frozen = load_json(frozen_manifest_path, None)
         if not isinstance(loaded_frozen, list):
-            raise SystemExit("manifesto congelado deve conter uma lista JSON")
+            raise SystemExit("the frozen manifest must contain a JSON list")
         if len(loaded_frozen) < args.count:
             raise SystemExit(
-                f"manifesto congelado tem {len(loaded_frozen)} imagens; "
-                f"a execução pediu {args.count}"
+                f"frozen manifest has {len(loaded_frozen)} images; "
+                f"the run requested {args.count}"
             )
         frozen_candidates = []
         for expected_id, item in enumerate(loaded_frozen[: args.count], 1):
             if not isinstance(item, dict):
-                raise SystemExit(f"entrada {expected_id} do manifesto não é um objeto")
+                raise SystemExit(f"manifest entry {expected_id} is not an object")
             required = ("pageid", "title", "download_url", "width", "height", "ppm_sha256")
             missing = [field for field in required if field not in item]
             if missing:
                 raise SystemExit(
-                    f"entrada {expected_id} sem campos obrigatórios: {', '.join(missing)}"
+                    f"entry {expected_id} is missing required fields: {', '.join(missing)}"
                 )
             if int(item.get("image_id", -1)) != expected_id:
                 raise SystemExit(
-                    f"ordem inválida no manifesto: esperado image_id {expected_id}"
+                    f"invalid manifest order: expected image_id {expected_id}"
                 )
             frozen_candidates.append(dict(item))
         frozen_manifest_sha256 = sha256_file(frozen_manifest_path)
@@ -1103,7 +1103,7 @@ def main() -> int:
     baseline_results_path = output_dir / "baseline-results.csv"
     failures_path = output_dir / "failures.json"
     metadata_path = output_dir / "metadata.json"
-    report_path = output_dir / "RELATORIO.md"
+    report_path = output_dir / "REPORT.md"
 
     config = {
         "count": args.count,
@@ -1144,7 +1144,7 @@ def main() -> int:
             "baseline_compare_sha256",
         ):
             if previous.get(key) != config[key]:
-                raise SystemExit(f"configuração de retomada diverge em {key}")
+                raise SystemExit(f"resume configuration differs at {key}")
         metadata["config"] = config
     else:
         metadata = {
@@ -1174,7 +1174,7 @@ def main() -> int:
                 for item in frozen_candidates
             ]
             if current_identity != frozen_identity:
-                raise SystemExit("candidates.json diverge do manifesto congelado")
+                raise SystemExit("candidates.json differs from the frozen manifest")
         else:
             candidates = frozen_candidates
             atomic_json(candidate_path, candidates)
@@ -1203,16 +1203,16 @@ def main() -> int:
     expected_rows = len(manifest) * len(args.qualities)
     if len(results) != expected_rows:
         raise SystemExit(
-            f"retomada inconsistente: {len(manifest)} imagens, {len(results)} linhas (esperado {expected_rows})"
+            f"inconsistent resume: {len(manifest)} images, {len(results)} rows (expected {expected_rows})"
         )
     if baseline_compare is not None and len(baseline_results) != expected_rows:
         raise SystemExit(
-            f"retomada inconsistente no baseline: {len(manifest)} imagens, "
-            f"{len(baseline_results)} linhas (esperado {expected_rows})"
+            f"inconsistent baseline resume: {len(manifest)} images, "
+            f"{len(baseline_results)} rows (expected {expected_rows})"
         )
     if baseline_compare is None and baseline_results:
         raise SystemExit(
-            "baseline-results.csv existe, mas --baseline-compare não foi informado"
+            "baseline-results.csv exists, but --baseline-compare was not provided"
         )
     accepted_ids = {int(item["pageid"]) for item in manifest}
     failed_ids = {int(item["pageid"]) for item in failures if "pageid" in item}
@@ -1230,15 +1230,15 @@ def main() -> int:
         if not untried:
             if frozen_manifest_path is not None:
                 raise SystemExit(
-                    "manifesto congelado esgotado antes de completar a execução; "
-                    "consulte failures.json"
+                    "frozen manifest exhausted before the run completed; "
+                    "see failures.json"
                 )
             provider_candidates = sum(
                 candidate.get("provider") == args.provider for candidate in candidates
             )
             desired = provider_candidates + max(100, args.count - len(manifest))
             print(
-                f"Coletando candidatos aleatórios de {args.provider} até {desired}...",
+                f"Collecting random candidates from {args.provider} up to {desired}...",
                 flush=True,
             )
             if args.provider == "commons":
@@ -1265,7 +1265,7 @@ def main() -> int:
             free = shutil.disk_usage(output_dir).free
             if free < minimum_free:
                 raise RuntimeError(
-                    f"espaço livre caiu para {free / 1024**3:.2f} GiB, abaixo do limite"
+                    f"free space fell to {free / 1024**3:.2f} GiB, below the limit"
                 )
             downloaded_bytes = download(
                 str(candidate["download_url"]),
@@ -1283,13 +1283,13 @@ def main() -> int:
                 expected_sha256 = str(candidate["ppm_sha256"])
                 if (width, height) != (expected_width, expected_height):
                     raise RuntimeError(
-                        "entrada congelada mudou de dimensão: "
-                        f"{width}x{height}, esperado {expected_width}x{expected_height}"
+                        "frozen entry changed dimensions: "
+                        f"{width}x{height}, expected {expected_width}x{expected_height}"
                     )
                 if ppm_sha256 != expected_sha256:
                     raise RuntimeError(
-                        "SHA-256 do PPM congelado divergiu: "
-                        f"{ppm_sha256}, esperado {expected_sha256}"
+                        "frozen PPM SHA-256 differs: "
+                        f"{ppm_sha256}, expected {expected_sha256}"
                     )
             temporary_bytes = downloaded_bytes + ppm_bytes
             metadata["peak_temporary_bytes"] = max(
@@ -1371,7 +1371,7 @@ def main() -> int:
             failures.append(failure)
             failed_ids.add(pageid)
             atomic_json(failures_path, failures)
-            print(f"  descartada: {failure['reason']}", flush=True)
+            print(f"  rejected: {failure['reason']}", flush=True)
         finally:
             source_path.unlink(missing_ok=True)
             ppm_path.unlink(missing_ok=True)
@@ -1390,8 +1390,8 @@ def main() -> int:
     atomic_json(metadata_path, metadata)
     report = render_report(output_dir, manifest, results, metadata, failures)
     atomic_text(report_path, report)
-    print(f"Concluído: {len(manifest)} imagens, {len(results)} pontos.", flush=True)
-    print(f"Relatório: {report_path}", flush=True)
+    print(f"Completed: {len(manifest)} images, {len(results)} points.", flush=True)
+    print(f"Report: {report_path}", flush=True)
     return 0
 
 

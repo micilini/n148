@@ -664,8 +664,8 @@
       "axis": "A_single_thread",
       "competitor": "jpeg",
       "operation": "decode",
-      "kruskal_h": 20.927493112947616,
-      "kruskal_p": 0.003878958806729691,
+      "kruskal_h": 20.927493112947673,
+      "kruskal_p": 0.0038789588067295994,
       "categories_tested": 8
     },
     {
@@ -704,8 +704,8 @@
       "axis": "A_single_thread",
       "competitor": "jxl_e7",
       "operation": "encode",
-      "kruskal_h": 43.35966942148764,
-      "kruskal_p": 2.842456153085875e-07,
+      "kruskal_h": 43.35966942148758,
+      "kruskal_p": 2.8424561530859506e-07,
       "categories_tested": 8
     },
     {
@@ -728,8 +728,8 @@
       "axis": "B_throughput",
       "competitor": "jxl_e3",
       "operation": "decode",
-      "kruskal_h": 19.783801652892578,
-      "kruskal_p": 0.006056094387302726,
+      "kruskal_h": 19.783801652892464,
+      "kruskal_p": 0.006056094387302994,
       "categories_tested": 8
     },
     {
@@ -744,8 +744,8 @@
       "axis": "B_throughput",
       "competitor": "jxl_e7",
       "operation": "decode",
-      "kruskal_h": 27.602314049586823,
-      "kruskal_p": 0.00025952423668974074,
+      "kruskal_h": 27.602314049586766,
+      "kruskal_p": 0.0002595242366897468,
       "categories_tested": 8
     },
     {
@@ -880,15 +880,15 @@
     {
       "comparison": "n148i_vs_jpeg",
       "metric": "ssim",
-      "kruskal_h": 28.059063360881566,
-      "kruskal_p": 0.0002145387874393933,
+      "kruskal_h": 28.05906336088151,
+      "kruskal_p": 0.00021453878743939845,
       "categories_tested": 8
     },
     {
       "comparison": "n148i_vs_jpeg",
       "metric": "ms_ssim",
-      "kruskal_h": 25.252672176308522,
-      "kruskal_p": 0.000684367293974265,
+      "kruskal_h": 25.252672176308465,
+      "kruskal_p": 0.0006843672939742811,
       "categories_tested": 8
     },
     {
@@ -915,15 +915,15 @@
     {
       "comparison": "n148i_vs_jxl_e3",
       "metric": "psnr_y_db",
-      "kruskal_h": 35.25278236914602,
-      "kruskal_p": 1.0024957188680935e-05,
+      "kruskal_h": 35.252782369145905,
+      "kruskal_p": 1.0024957188681438e-05,
       "categories_tested": 8
     },
     {
       "comparison": "n148i_vs_jxl_e3",
       "metric": "ssim",
-      "kruskal_h": 26.084373749499832,
-      "kruskal_p": 0.000486479553148118,
+      "kruskal_h": 26.084373749499775,
+      "kruskal_p": 0.00048647955314812903,
       "categories_tested": 8
     },
     {
@@ -950,8 +950,8 @@
     {
       "comparison": "n148i_vs_jxl_e7",
       "metric": "psnr_rgb_db",
-      "kruskal_h": 39.58380165289259,
-      "kruskal_p": 1.5120105880864176e-06,
+      "kruskal_h": 39.58380165289253,
+      "kruskal_p": 1.5120105880864545e-06,
       "categories_tested": 8
     },
     {
@@ -964,8 +964,8 @@
     {
       "comparison": "n148i_vs_jxl_e7",
       "metric": "ssim",
-      "kruskal_h": 42.04506887052344,
-      "kruskal_p": 5.097084178175844e-07,
+      "kruskal_h": 42.04506887052338,
+      "kruskal_p": 5.09708417817598e-07,
       "categories_tested": 8
     },
     {
@@ -978,15 +978,15 @@
     {
       "comparison": "n148i_vs_jxl_e7",
       "metric": "ssimulacra2",
-      "kruskal_h": 28.838016528925664,
-      "kruskal_p": 0.00015486448453944391,
+      "kruskal_h": 28.838016528925607,
+      "kruskal_p": 0.0001548644845394478,
       "categories_tested": 8
     },
     {
       "comparison": "n148i_vs_jxl_e7",
       "metric": "butteraugli",
-      "kruskal_h": 31.42787878787874,
-      "kruskal_p": 5.1832817864576554e-05,
+      "kruskal_h": 31.427878787878797,
+      "kruskal_p": 5.1832817864575246e-05,
       "categories_tested": 8
     }
   ]
