@@ -1,0 +1,13 @@
+# N.148i pkg-config metadata
+# Copyright (c) 2026 Micilini Roll. Licensed under the MIT License.
+
+prefix=${pcfiledir}/../..
+exec_prefix=${prefix}
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
+
+Name: n148i
+Description: N.148i v1 experimental lossy image codec
+Version: @PROJECT_VERSION@
+Libs: -L${libdir} -ln148i
+Cflags: -I${includedir}

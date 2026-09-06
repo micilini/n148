@@ -1,36 +1,34 @@
-#include <limits.h>
+/*
+ * N.148i command-line roundtrip tool
+ *
+ * Copyright (c) 2026 Micilini Roll
+ * Licensed under the MIT License. See LICENSE in the project root.
+ */
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "decoder.h"
-#include "encoder.h"
-#include "header.h"
-#include "huffman.h"
+#include "n148i.h"
 #include "ppm.h"
 
 #define DEFAULT_INPUT   "images/example.ppm"
 #define DEFAULT_ENCODED "output/image.n148i"
 #define DEFAULT_DECODED "output/decoded.ppm"
+#define N148I_FIXED_HEADER_SIZE 21
 #ifndef QUALITY
 #define QUALITY 50
 #endif
 #ifndef CHROMA_MODE
-#define CHROMA_MODE CHROMA_420
+#define CHROMA_MODE N148I_CHROMA_420
 #endif
 #ifndef OPTIMIZE
 #define OPTIMIZE 1
 #endif
-#ifndef SMOOTH_UPSAMPLING
-#define SMOOTH_UPSAMPLING 1
-#endif
 
 static long file_size(const char *path) {
     FILE *file = fopen(path, "rb");
-    if (!file) {
-        return 0;
-    }
-
+    if (!file) return 0;
     if (fseek(file, 0, SEEK_END) != 0) {
         fclose(file);
         return 0;
@@ -40,266 +38,188 @@ static long file_size(const char *path) {
     return size;
 }
 
-static double compute_psnr(Image *first, Image *second) {
-    if (first->width != second->width || first->height != second->height) {
+static int write_file(const char *path, const uint8_t *data, size_t size) {
+    FILE *file = fopen(path, "wb");
+    if (!file) return 0;
+    int written = fwrite(data, 1, size, file) == size;
+    int closed = fclose(file) == 0;
+    return written && closed;
+}
+
+static double compute_psnr(const Image *first, const n148i_image_t *second) {
+    if ((uint32_t) first->width != second->width ||
+        (uint32_t) first->height != second->height) {
         return 0.0;
     }
 
-    long value_count = (long)first->width * first->height * 3;
+    long value_count = (long) first->width * first->height * 3;
     double mean_squared_error = 0.0;
-
-    for (long i = 0; i < value_count; i++) {
+    for (long index = 0; index < value_count; index++) {
         double difference =
-            (double)first->pixels[i] - (double)second->pixels[i];
+            (double) first->pixels[index] - (double) second->pixels[index];
         mean_squared_error += difference * difference;
     }
-
     mean_squared_error /= value_count;
-    if (mean_squared_error == 0.0) {
-        return 999.0;
-    }
-
+    if (mean_squared_error == 0.0) return 999.0;
     return 10.0 * log10(255.0 * 255.0 / mean_squared_error);
+}
+
+static const char *chroma_name(n148i_chroma_t chroma) {
+    switch (chroma) {
+        case N148I_CHROMA_444: return "4:4:4";
+        case N148I_CHROMA_422: return "4:2:2";
+        case N148I_CHROMA_420: return "4:2:0";
+        default: return "unknown";
+    }
+}
+
+static void cli_chroma_dimensions(n148i_chroma_t chroma,
+                                  int width, int height,
+                                  int *chroma_width, int *chroma_height) {
+    *chroma_width = chroma == N148I_CHROMA_444 ? width : (width + 1) / 2;
+    *chroma_height = chroma == N148I_CHROMA_420 ? (height + 1) / 2 : height;
+}
+
+static long block_count(int width, int height) {
+    return (long) ((width + 7) / 8) * ((height + 7) / 8);
 }
 
 static void print_usage(const char *program) {
     printf("usage: %s [input.ppm] [quality] [chroma]\n", program);
     printf("  input.ppm  source image (default: %s)\n", DEFAULT_INPUT);
     printf("  quality    1..100        (default: %d)\n", QUALITY);
-    printf("  chroma     0=4:4:4 1=4:2:2 2=4:2:0 (default: %d)\n", CHROMA_MODE);
+    printf("  chroma     0=4:4:4 1=4:2:2 2=4:2:0 (default: %d)\n",
+           CHROMA_MODE);
 }
 
 int main(int argc, char **argv) {
-    // Paths and settings come from the command line when given, so the
-    // same binary can be pointed at any image without a rebuild.
-    const char *INPUT_PATH   = DEFAULT_INPUT;
-    const char *N148I_PATH   = DEFAULT_ENCODED;
-    const char *DECODED_PATH = DEFAULT_DECODED;
+    const char *input_path = DEFAULT_INPUT;
     int quality = QUALITY;
-    int chroma  = CHROMA_MODE;
-
-    if (argc > 1) {
-        if (argv[1][0] == '-') { print_usage(argv[0]); return 0; }
-        INPUT_PATH = argv[1];
-    }
-    if (argc > 2) quality = atoi(argv[2]);
-    if (argc > 3) chroma  = atoi(argv[3]);
-    if (quality < 1 || quality > 100) { printf("quality must be 1..100\n"); return 1; }
-    if (chroma < 0 || chroma > 2)     { printf("chroma must be 0, 1 or 2\n"); return 1; }
-
+    int chroma_value = CHROMA_MODE;
     Image original = {0};
-    Image decoded = {0};
-    Plane y = {0};
-    Plane cb = {0};
-    Plane cr = {0};
-    Plane decoded_y = {0};
-    Plane decoded_cb = {0};
-    Plane decoded_cr = {0};
-    unsigned char *compressed = NULL;
-    unsigned char *payload = NULL;
-    HuffSpec encode_specs[HUFFMAN_TABLE_COUNT];
-    HuffSpec decode_specs[HUFFMAN_TABLE_COUNT];
-    FILE *file = NULL;
+    n148i_image_t decoded = {0};
+    uint8_t *encoded = NULL;
+    size_t encoded_size = 0;
     int exit_code = EXIT_FAILURE;
 
-    if ((chroma != CHROMA_444 && chroma != CHROMA_422 &&
-         chroma != CHROMA_420) ||
-        (OPTIMIZE != 0 && OPTIMIZE != 1) ||
-        (SMOOTH_UPSAMPLING != 0 && SMOOTH_UPSAMPLING != 1)) {
-        printf("Invalid codec configuration.\n");
-        goto cleanup;
+    if (argc > 1) {
+        if (argv[1][0] == '-') {
+            print_usage(argv[0]);
+            return EXIT_SUCCESS;
+        }
+        input_path = argv[1];
+    }
+    if (argc > 2) quality = atoi(argv[2]);
+    if (argc > 3) chroma_value = atoi(argv[3]);
+    if (quality < 1 || quality > 100) {
+        printf("quality must be 1..100\n");
+        return EXIT_FAILURE;
+    }
+    if (chroma_value < N148I_CHROMA_444 ||
+        chroma_value > N148I_CHROMA_420) {
+        printf("chroma must be 0, 1 or 2\n");
+        return EXIT_FAILURE;
     }
 
-    // ================= ENCODE =================
-    if (!load_ppm(INPUT_PATH, &original)) {
-        goto cleanup;
-    }
+    if (!load_ppm(input_path, &original)) goto cleanup;
+
+    n148i_chroma_t chroma = (n148i_chroma_t) chroma_value;
+    n148i_image_t source = {
+        original.pixels,
+        (uint32_t) original.width,
+        (uint32_t) original.height,
+        (size_t) original.width * 3
+    };
+    n148i_encode_options_t options;
+    n148i_encode_options_init(&options);
+    options.quality = quality;
+    options.chroma = chroma;
+    options.optimize_huffman = OPTIMIZE;
 
     printf("=== N.148i encoder ===\n");
-    printf("Input:    %s  (%d x %d)\n", INPUT_PATH,
+    printf("Input:    %s  (%d x %d)\n", input_path,
            original.width, original.height);
     printf("Quality:  %d\n", quality);
     printf("Chroma:   %s\n", chroma_name(chroma));
     printf("Huffman:  %s\n\n",
-           OPTIMIZE ? "optimized for this image" : "standard tables");
+           options.optimize_huffman ? "optimized for this image" :
+                                      "standard tables");
 
-    if (!split_channels(&original, &y, &cb, &cr, chroma)) {
-        printf("Could not split channels.\n");
-        goto cleanup;
-    }
-    printf("Y plane:      %d x %d\n", y.width, y.height);
-    printf("Cb/Cr planes: %d x %d\n\n", cb.width, cb.height);
+    int chroma_width, chroma_height;
+    cli_chroma_dimensions(chroma, original.width, original.height,
+                          &chroma_width, &chroma_height);
+    printf("Y plane:      %d x %d\n", original.width, original.height);
+    printf("Cb/Cr planes: %d x %d\n\n", chroma_width, chroma_height);
 
-    EncodeStats encode_stats;
-    if (!encode_image(&y, &cb, &cr, quality, OPTIMIZE, encode_specs,
-                      &compressed, &encode_stats)) {
-        printf("Encoding failed.\n");
-        goto cleanup;
-    }
-
-    long encoded_blocks =
-        encode_stats.blocks_y +
-        encode_stats.blocks_cb +
-        encode_stats.blocks_cr;
-    printf("Encoded %ld blocks\n", encoded_blocks);
-    if (OPTIMIZE) {
-        printf("Huffman tables: %ld bytes stored in the file\n",
-               encode_stats.table_size);
-    }
-    printf("Entropy data:   %ld bytes\n", encode_stats.data_size);
-
-    file = fopen(N148I_PATH, "wb");
-    if (!file) {
-        printf("Could not create '%s'\n", N148I_PATH);
+    n148i_result_t result = n148i_encode_memory(
+        &source, &options, &encoded, &encoded_size);
+    if (result != N148I_OK) {
+        printf("Encoding failed: %s.\n", n148i_result_string(result));
         goto cleanup;
     }
 
-    N148iHeader header;
-    header.version = N148I_VERSION;
-    header.width = (uint32_t)original.width;
-    header.height = (uint32_t)original.height;
-    header.quality = quality;
-    header.chroma = chroma;
-    header.optimized = OPTIMIZE;
-    header.data_size = (uint32_t)encode_stats.data_size;
-
-    int write_ok = write_header(file, &header);
-    if (write_ok && header.optimized) {
-        write_ok = write_huffman_tables(file, encode_specs);
-    }
-    if (write_ok) {
-        write_ok =
-            fwrite(compressed, 1, (size_t)encode_stats.data_size, file) ==
-            (size_t)encode_stats.data_size;
-    }
-    int close_ok = fclose(file) == 0;
-    file = NULL;
-    if (!write_ok || !close_ok) {
-        printf("Could not write '%s'\n", N148I_PATH);
+    n148i_image_info_t info;
+    result = n148i_read_header(encoded, encoded_size, &info);
+    if (result != N148I_OK) {
+        printf("Encoded header is invalid: %s.\n",
+               n148i_result_string(result));
         goto cleanup;
     }
-    printf("Wrote %s\n\n", N148I_PATH);
+    long blocks = block_count(original.width, original.height) +
+        2 * block_count(chroma_width, chroma_height);
+    printf("Encoded %ld blocks\n", blocks);
+    if (info.optimized_huffman) {
+        printf("Huffman tables: %zu bytes stored in the file\n",
+               info.encoded_header_size - N148I_FIXED_HEADER_SIZE);
+    }
+    printf("Entropy data:   %u bytes\n", info.payload_size);
 
-    free(compressed);
-    compressed = NULL;
-    free_plane(&y);
-    free_plane(&cb);
-    free_plane(&cr);
+    if (!write_file(DEFAULT_ENCODED, encoded, encoded_size)) {
+        printf("Could not write '%s'\n", DEFAULT_ENCODED);
+        goto cleanup;
+    }
+    printf("Wrote %s\n\n", DEFAULT_ENCODED);
 
-    // ================= DECODE =================
     printf("=== N.148i decoder ===\n");
-
-    file = fopen(N148I_PATH, "rb");
-    if (!file) {
-        printf("Could not open '%s'\n", N148I_PATH);
+    printf("Header:  v%u, %u x %u, quality %u, chroma %s, %s tables\n",
+           info.format_version, info.width, info.height, info.quality,
+           chroma_name(info.chroma),
+           info.optimized_huffman ? "custom" : "standard");
+    result = n148i_decode_memory(encoded, encoded_size, &decoded);
+    if (result != N148I_OK) {
+        printf("Decoding failed: %s.\n", n148i_result_string(result));
         goto cleanup;
     }
+    printf("Decoded %ld blocks, consumed %u of %u bytes\n",
+           blocks, info.payload_size, info.payload_size);
+    printf("Upsampling: bilinear\n");
 
-    N148iHeader loaded;
-    if (!read_header(file, &loaded)) {
-        printf("This is not a valid N148i file!\n");
+    Image decoded_view = {
+        (int) decoded.width,
+        (int) decoded.height,
+        decoded.pixels
+    };
+    if (!save_ppm(DEFAULT_DECODED, &decoded_view)) {
+        printf("Could not write '%s'\n", DEFAULT_DECODED);
         goto cleanup;
     }
-    if (loaded.version != N148I_VERSION ||
-        loaded.width == 0 || loaded.width > INT_MAX ||
-        loaded.height == 0 || loaded.height > INT_MAX ||
-        loaded.quality == 0 || loaded.quality > 100 ||
-        (loaded.chroma != CHROMA_444 && loaded.chroma != CHROMA_422 &&
-         loaded.chroma != CHROMA_420) ||
-        loaded.optimized > 1 ||
-        loaded.data_size == 0) {
-        printf("Unsupported N148i header!\n");
-        goto cleanup;
-    }
+    printf("Wrote %s\n\n", DEFAULT_DECODED);
 
-    printf("Header:  v%d, %u x %u, quality %d, chroma %s, %s tables\n",
-           loaded.version, loaded.width, loaded.height,
-           loaded.quality, chroma_name(loaded.chroma),
-           loaded.optimized ? "custom" : "standard");
-
-    if (loaded.optimized) {
-        if (!read_huffman_tables(file, decode_specs)) {
-            printf("Custom Huffman tables are invalid or truncated!\n");
-            goto cleanup;
-        }
-    } else {
-        huffman_default_specs(decode_specs);
-    }
-
-    payload = (unsigned char *)malloc(loaded.data_size);
-    if (!payload) {
-        printf("Out of memory while reading the payload.\n");
-        goto cleanup;
-    }
-
-    if (fread(payload, 1, loaded.data_size, file) != loaded.data_size) {
-        printf("File is truncated!\n");
-        goto cleanup;
-    }
-    fclose(file);
-    file = NULL;
-
-    DecodeStats decode_stats;
-    if (!decode_image(payload, loaded.data_size,
-                      (int)loaded.width, (int)loaded.height,
-                      loaded.quality, loaded.chroma,
-                      decode_specs,
-                      &decoded_y, &decoded_cb, &decoded_cr,
-                      &decode_stats)) {
-        printf("Compressed payload is invalid or truncated!\n");
-        goto cleanup;
-    }
-
-    long decoded_blocks =
-        decode_stats.blocks_y +
-        decode_stats.blocks_cb +
-        decode_stats.blocks_cr;
-    printf("Decoded %ld blocks, consumed %ld of %u bytes\n",
-           decoded_blocks, decode_stats.bytes_consumed,
-           loaded.data_size);
-
-    if (!merge_channels(&decoded_y, &decoded_cb, &decoded_cr,
-                        SMOOTH_UPSAMPLING, &decoded)) {
-        printf("Could not rebuild the RGB image.\n");
-        goto cleanup;
-    }
-    printf("Upsampling: %s\n",
-           SMOOTH_UPSAMPLING ? "bilinear" : "nearest neighbour");
-    if (!save_ppm(DECODED_PATH, &decoded)) {
-        printf("Could not write '%s'\n", DECODED_PATH);
-        goto cleanup;
-    }
-    printf("Wrote %s\n\n", DECODED_PATH);
-
-    // ================= RESULTS =================
-    long original_bytes = file_size(INPUT_PATH);
-    long n148i_bytes = file_size(N148I_PATH);
+    long original_bytes = file_size(input_path);
+    long encoded_bytes = file_size(DEFAULT_ENCODED);
     double psnr = compute_psnr(&original, &decoded);
-
     printf("=== Results ===\n");
     printf("Original PPM: %8ld bytes (%.1f KB)\n",
            original_bytes, original_bytes / 1024.0);
     printf("N148i file:   %8ld bytes (%.1f KB)\n",
-           n148i_bytes, n148i_bytes / 1024.0);
-    printf("Compression:  %.1f:1\n",
-           (double)original_bytes / n148i_bytes);
+           encoded_bytes, encoded_bytes / 1024.0);
+    printf("Compression:  %.1f:1\n", (double) original_bytes / encoded_bytes);
     printf("PSNR:         %.2f dB\n", psnr);
-
     exit_code = EXIT_SUCCESS;
 
 cleanup:
-    if (file) {
-        fclose(file);
-    }
-    free(compressed);
-    free(payload);
+    n148i_free_buffer(encoded);
+    n148i_free_image(&decoded);
     free_image(&original);
-    free_image(&decoded);
-    free_plane(&y);
-    free_plane(&cb);
-    free_plane(&cr);
-    free_plane(&decoded_y);
-    free_plane(&decoded_cb);
-    free_plane(&decoded_cr);
     return exit_code;
 }

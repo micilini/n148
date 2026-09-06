@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
 #include "encoder.h"
 #include "tables.h"
 #include "dct.h"
@@ -176,6 +179,25 @@ typedef struct {
     long   count;
 } CoeffCache;
 
+static inline int trailing_zero_count(unsigned long long value) {
+#if defined(_MSC_VER) && defined(_M_X64)
+    unsigned long index;
+    _BitScanForward64(&index, value);
+    return (int) index;
+#elif defined(_MSC_VER)
+    unsigned long index;
+    unsigned long low = (unsigned long) value;
+    if (low != 0) {
+        _BitScanForward(&index, low);
+        return (int) index;
+    }
+    _BitScanForward(&index, (unsigned long) (value >> 32));
+    return (int) index + 32;
+#else
+    return __builtin_ctzll(value);
+#endif
+}
+
 static void cache_release(CoeffCache *cache) {
     free(cache->coefficients);
     cache->coefficients = NULL;
@@ -344,7 +366,7 @@ static void quantize_rows(long start, long end, int worker, void *context) {
                 unsigned char count = 0;
                 int previous = 0;
                 while (mask) {
-                    int position = __builtin_ctzll(mask);
+                    int position = trailing_zero_count(mask);
                     int run = position - previous - 1;
                     while (run > 15) { freq[0xF0]++; run -= 16; }
                     freq[(run << 4) | category(out[position])]++;
@@ -431,7 +453,7 @@ static inline void write_ac_sparse(BitWriter *writer, const short *zz,
                                    const HuffTable *ac_table) {
     int previous = 0;
     while (mask) {
-        int position = __builtin_ctzll(mask);
+        int position = trailing_zero_count(mask);
         int run = position - previous - 1;
         while (run > 15) {
             bw_write_bits(writer, ac_table->code[0xF0], ac_table->len[0xF0]);
@@ -484,7 +506,7 @@ static inline void write_ac_dense(BitWriter *writer, const short *zz,
     AcBitBatch batch = {0, 0};
     int previous = 0;
     while (mask) {
-        int position = __builtin_ctzll(mask);
+        int position = trailing_zero_count(mask);
         int run = position - previous - 1;
         while (run > 15) {
             ac_batch_put(writer, &batch,

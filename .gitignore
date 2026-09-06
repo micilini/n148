@@ -11,6 +11,14 @@ __pycache__/
 *.o
 .benchmark-deps/
 .venv/
+/.build/
+/cmake-build*/
+/builds/
+/libn148i.a
+/libn148i.so*
+/libn148i.dylib*
+/n148i.dll
+/n148i.lib
 
 # Generated codec output. Benchmark inputs and datasets are intentionally
 # versioned on chore/benchmark-v1 so the published measurements are auditable.

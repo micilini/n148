@@ -1,0 +1,60 @@
+# N.148i release library builds
+# Copyright (c) 2026 Micilini Roll. Licensed under the MIT License.
+
+name: Build libraries
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.artifact }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: linux-x86_64
+            cmake_args: ""
+          - os: windows-latest
+            artifact: windows-x86_64
+            cmake_args: ""
+          - os: macos-latest
+            artifact: macos-universal
+            cmake_args: "-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        shell: bash
+        env:
+          N148I_CMAKE_ARGS: ${{ matrix.cmake_args }}
+        run: >-
+          cmake -S . -B cmake-build
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/builds/${{ matrix.artifact }}"
+          ${N148I_CMAKE_ARGS}
+
+      - name: Build
+        run: cmake --build cmake-build --config Release --parallel
+
+      - name: Test public API
+        run: ctest --test-dir cmake-build -C Release --output-on-failure
+
+      - name: Install
+        run: cmake --install cmake-build --config Release
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: n148i-${{ matrix.artifact }}
+          path: builds/${{ matrix.artifact }}
+          if-no-files-found: error
