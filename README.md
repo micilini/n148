@@ -47,6 +47,271 @@ bitstream through six optimization milestones. The Git history mirrors that
 journey, so readers can inspect not just the final implementation, but how it
 evolved.
 
+## Use N.148i as a library
+
+Version 1.0.0 packages the measured codec behind one public header,
+[`include/n148i.h`](include/n148i.h). Applications pass RGB pixels in memory
+and receive an allocated `.n148i` buffer, or pass a complete encoded buffer and
+receive RGB pixels. PPM remains a command-line convenience and is not part of
+the public API.
+
+The **library version** identifies this implementation and follows semantic
+versioning. The **format version** is the byte stored in an `.n148i` file.
+Both are currently 1, but they are deliberately separate: a compatible library
+fix can change 1.0.0 without changing the v1 bitstream.
+
+### Release artifacts
+
+| Platform | Static library | Shared library | v1 status |
+|---|---|---|---|
+| Linux x86-64 | `lib/static/libn148i.a` | `lib/libn148i.so.1.0.0` plus ABI symlinks | Built and tested locally |
+| Windows x86-64 | `lib/static/n148i.lib` | `bin/n148i.dll` plus `lib/n148i.lib` import library | CMake/CI target; not produced locally; single-thread scalar fallback |
+| macOS universal | `lib/static/libn148i.a` | `lib/libn148i.dylib` | Native CI target for Intel and Apple Silicon; not produced locally |
+
+Packaged trees also contain `include/n148i.h`, `LICENSE`, `README.txt`,
+`pkg-config` metadata where applicable, and a CMake package. Generated trees
+live under `builds/` and are intentionally ignored by Git; release binaries
+should come from the reproducible build or the workflow artifact.
+
+### Complete memory roundtrip
+
+This example creates RGB pixels, encodes them, inspects the header, decodes
+them, handles every error, and releases memory with the same library that
+allocated it. The source is also available as
+[`examples/memory_roundtrip.c`](examples/memory_roundtrip.c).
+
+```c
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <n148i.h>
+
+static void report_error(const char *operation, n148i_result_t result) {
+    fprintf(stderr, "%s: %s\n", operation, n148i_result_string(result));
+}
+
+int main(void) {
+    enum { WIDTH = 64, HEIGHT = 48 };
+    uint8_t pixels[WIDTH * HEIGHT * 3];
+    for (int y = 0; y < HEIGHT; y++) {
+        for (int x = 0; x < WIDTH; x++) {
+            size_t offset = ((size_t)y * WIDTH + (size_t)x) * 3;
+            pixels[offset + 0] = (uint8_t)(x * 255 / (WIDTH - 1));
+            pixels[offset + 1] = (uint8_t)(y * 255 / (HEIGHT - 1));
+            pixels[offset + 2] = (uint8_t)((x ^ y) * 4);
+        }
+    }
+
+    n148i_image_t source = {pixels, WIDTH, HEIGHT, WIDTH * 3};
+    n148i_encode_options_t options;
+    n148i_encode_options_init(&options);
+    options.quality = 75;
+
+    uint8_t *encoded = NULL;
+    size_t encoded_size = 0;
+    n148i_result_t result = n148i_encode_memory(
+        &source, &options, &encoded, &encoded_size);
+    if (result != N148I_OK) {
+        report_error("encode", result);
+        return EXIT_FAILURE;
+    }
+
+    n148i_image_info_t info;
+    result = n148i_read_header(encoded, encoded_size, &info);
+    if (result != N148I_OK) {
+        report_error("read header", result);
+        n148i_free_buffer(encoded);
+        return EXIT_FAILURE;
+    }
+
+    n148i_image_t decoded = {0};
+    result = n148i_decode_memory(encoded, encoded_size, &decoded);
+    if (result != N148I_OK) {
+        report_error("decode", result);
+        n148i_free_buffer(encoded);
+        return EXIT_FAILURE;
+    }
+
+    printf("encoded %ux%u into %zu bytes and decoded %ux%u\n",
+           info.width, info.height, encoded_size,
+           decoded.width, decoded.height);
+
+    n148i_free_image(&decoded);
+    n148i_free_buffer(encoded);
+    return EXIT_SUCCESS;
+}
+```
+
+With an installed Linux package:
+
+```bash
+cc examples/memory_roundtrip.c $(pkg-config --cflags --libs n148i) \
+  -o memory_roundtrip
+./memory_roundtrip
+```
+
+Or consume the installed CMake package:
+
+```cmake
+find_package(n148i 1 CONFIG REQUIRED)
+add_executable(my_app app.c)
+target_link_libraries(my_app PRIVATE n148i::n148i)
+```
+
+Use `n148i::n148i_static` for the static target. On Windows, link the import
+library for a shared build and copy `n148i.dll` beside the application `.exe`.
+When linking `lib/static/n148i.lib` directly, define `N148I_STATIC_DEFINE`
+before including the header. On macOS, keep the `.dylib` in an application
+bundle or provide an appropriate `@rpath`; on Linux, install the `.so` in the
+loader path or set an application-relative rpath.
+
+### Encoding options
+
+Always call `n148i_encode_options_init()` before changing fields. Its
+`struct_size` field lets a later compatible library append options safely.
+
+| Field | Default | Meaning |
+|---|---:|---|
+| `quality` | `50` | Quantization quality from 1 through 100 |
+| `chroma` | `N148I_CHROMA_420` | `444`, `422`, or `420` subsampling enum |
+| `optimize_huffman` | `1` | Store canonical tables optimized for this image |
+| `thread_count` | `0` | Keep the process-wide automatic setting; 1 through 32 sets it explicitly |
+
+`n148i_image_t` describes interleaved 8-bit RGB with width, height, and byte
+stride. A zero stride means tightly packed `width * 3`; larger strides are
+accepted, so subimages and padded rows do not need repacking by the caller.
+
+### API reference
+
+| Function | Parameters | Result |
+|---|---|---|
+| `n148i_encode_options_init` | writable options pointer | Initializes all current defaults; no return value |
+| `n148i_encode_memory` | source image, optional options, output buffer pointer, output size pointer | Allocates a complete v1 stream and returns `n148i_result_t` |
+| `n148i_decode_memory` | encoded bytes and size, output image pointer | Allocates tightly packed RGB pixels and returns `n148i_result_t` |
+| `n148i_read_header` | encoded bytes and size, output info pointer | Validates the container and reports dimensions, format, settings, and payload sizes without decoding pixels |
+| `n148i_free_buffer` | pointer returned by the encoder | Releases an encoded buffer in the library's allocator |
+| `n148i_free_image` | image returned by the decoder | Releases pixels and clears every image field |
+| `n148i_result_string` | an error enum value | Returns a static English description |
+| `n148i_library_version` | none | Returns the loaded library version string, currently `1.0.0` |
+| `n148i_format_version` | none | Returns the supported file-format version, currently `1` |
+| `n148i_simd_level` | none | Returns the active runtime dispatch level |
+| `n148i_simd_name` | SIMD enum value | Returns a static name for that level |
+| `n148i_simd_force` | automatic, scalar, SSE2, AVX2, or AVX2+FMA | Selects a supported path or returns an error |
+
+The compile-time `N148I_VERSION_MAJOR`, `N148I_VERSION_MINOR`, and
+`N148I_VERSION_PATCH` macros describe the header used to compile an
+application. `n148i_library_version()` describes the binary actually loaded.
+
+### Error codes
+
+| Code | Meaning |
+|---|---|
+| `N148I_OK` | Operation completed |
+| `N148I_ERROR_INVALID_ARGUMENT` | Null pointer, invalid option, dimensions, or stride |
+| `N148I_ERROR_OUT_OF_MEMORY` | A library allocation failed |
+| `N148I_ERROR_INVALID_FORMAT` | Signature or fixed header fields are invalid |
+| `N148I_ERROR_UNSUPPORTED_VERSION` | The stream uses another format version |
+| `N148I_ERROR_TRUNCATED_DATA` | Header, table, or payload bytes are missing |
+| `N148I_ERROR_CORRUPT_DATA` | Tables, trailing bytes, or consumed size are inconsistent |
+| `N148I_ERROR_SIZE_OVERFLOW` | Dimensions or encoded size exceed an internal limit |
+| `N148I_ERROR_ENCODE_FAILED` | The v1 encoder could not complete |
+| `N148I_ERROR_DECODE_FAILED` | The v1 entropy or reconstruction path could not complete |
+| `N148I_ERROR_UNSUPPORTED_SIMD` | A forced SIMD path is unavailable on this CPU/build |
+
+### Thread safety
+
+Version strings, error strings, header inspection, and the two free functions
+can be called concurrently. The v1 codec retains process-wide SIMD dispatch,
+thread-count state, encoder histogram scratch space, and one pthread pool, so
+`n148i_encode_memory()` and `n148i_decode_memory()` must not overlap another
+encode/decode call unless the application supplies external synchronization.
+Call `n148i_simd_force()` and set a nonzero encoding `thread_count` before
+starting worker threads, never while a codec call is active. All returned
+buffers are independently owned after a call completes.
+
+## Build the library
+
+CMake 3.16 or newer is the portable distribution build. Static code is copied
+into an application at link time; it is simple to deploy but increases each
+executable and requires relinking for updates. A shared library stays in a
+separate `.so`, `.dylib`, or `.dll`; several programs can load it and it can be
+updated independently as long as the ABI remains compatible.
+
+### Linux
+
+```bash
+sudo apt install -y build-essential cmake
+cmake -S . -B cmake-build-linux \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="$PWD/builds/linux-x86_64"
+cmake --build cmake-build-linux --parallel
+ctest --test-dir cmake-build-linux --output-on-failure
+cmake --install cmake-build-linux
+```
+
+This creates versioned `libn148i.so` links, `libn148i.a`, the public header,
+and discovery metadata. The shared object is built with hidden visibility and
+an ELF version script, so its dynamic ABI contains only `n148i_*` symbols.
+
+### Windows with Visual Studio
+
+Run these commands from a Developer PowerShell:
+
+```powershell
+cmake -S . -B cmake-build-windows -G "Visual Studio 17 2022" -A x64 `
+  -DCMAKE_INSTALL_PREFIX="$PWD/builds/windows-x86_64"
+cmake --build cmake-build-windows --config Release --parallel
+ctest --test-dir cmake-build-windows -C Release --output-on-failure
+cmake --install cmake-build-windows --config Release
+```
+
+The `.dll` is the loadable library; it is not an executable. MSVC links against
+its import `.lib`, while the separate static `.lib` contains the codec itself.
+The v1 Windows build intentionally defines `N148_NO_THREADS`: it is functional
+but single-threaded because the existing worker pool uses pthreads.
+
+### Cross-compile Windows from Linux
+
+```bash
+sudo apt install -y mingw-w64
+cmake -S . -B cmake-build-mingw \
+  -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/mingw-w64-x86_64.cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="$PWD/builds/windows-x86_64"
+cmake --build cmake-build-mingw --parallel
+cmake --install cmake-build-mingw
+```
+
+Cross-compilation verifies that the files link, but running the Windows tests
+still requires Windows or Wine. MinGW-w64 was not installed on the Linux
+machine used for this change, and passwordless package installation was not
+available, so no local Windows binary is claimed.
+
+### macOS universal build
+
+Run this on a Mac with Xcode command-line tools:
+
+```bash
+cmake -S . -B cmake-build-macos \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_OSX_DEPLOYMENT_TARGET=10.15 \
+  -DCMAKE_OSX_ARCHITECTURES="x86_64;arm64" \
+  -DCMAKE_INSTALL_PREFIX="$PWD/builds/macos-universal"
+cmake --build cmake-build-macos --parallel
+ctest --test-dir cmake-build-macos --output-on-failure
+cmake --install cmake-build-macos
+```
+
+Apple's SDK license prevents a genuine macOS build from this Linux machine.
+The checked-in [GitHub Actions workflow](.github/workflows/build-libraries.yml)
+runs the native Linux, Windows, and macOS builds and uploads each installed
+tree as an artifact.
+
+The existing Makefile remains the fast Linux development path. `make` builds
+the CLI against `libn148i.a`, while `make libraries` creates both local library
+forms.
+
 ## How it works
 
 ![N.148i encoding and decoding pipeline](docs/assets/readme/pipeline.svg)
@@ -95,7 +360,9 @@ is tested at effort 3 and effort 7.
 
 These are the measured results on an Intel Core 7 150U. They are not marketing
 estimates. The complete environment, methodology, uncertainty, per-image
-results, and limitations are in **[BENCHMARK.md](BENCHMARK.md)**.
+results, and limitations are in **[BENCHMARK.md](BENCHMARK.md)**. To reproduce
+the complete measurement from corpus verification through analysis, follow
+[`tools/README.md`](tools/README.md).
 
 ### Compression efficiency at equal quality
 
@@ -306,6 +573,7 @@ command-line options; run each tool with `--help` for the complete interface.
 | Command | Purpose | Extra dependency |
 |---|---|---|
 | `make` | Build the N.148i encode/decode CLI | none |
+| `make libraries` | Build `libn148i.a` and versioned `libn148i.so` | none |
 | `make bench` | Build the focused N.148i timing driver | none |
 | `make validate` | Build correctness and determinism tests | none |
 | `make compare` | Build the in-process JPEG comparison | libjpeg-turbo |
@@ -346,21 +614,28 @@ payloads, and payloads whose consumed byte count differs from the header.
 
 ```text
 n148/
-├── src/                       codec and direct benchmark CLIs
-├── tools/                     corpus, benchmark, and analysis tools
+├── include/n148i.h            sole public library header
+├── src/                       codec internals and command-line programs
+├── examples/                  compilable installed-library consumer
+├── cmake/                     package templates and cross toolchain
+├── tools/                     benchmark tools and reproduction guide
 ├── images/
 │   ├── example.ppm            official lesson fixture
 │   ├── corpus-0001.ppm ...    120 committed benchmark inputs
 │   ├── CREDITS.txt            human-readable attribution
 │   └── MANIFEST.json          corpus manifest mirror
-├── benchmarks/v1/
-│   ├── final-results.csv      5,400 unrounded summary rows
-│   ├── timing-samples.csv     197,440 individual samples
-│   ├── corpus-manifest.json   licenses, origins, and hashes
-│   ├── environment.json       captured machine and toolchain
-│   └── analysis/              BD-rate, statistics, and SVG plots
+├── benchmarks/
+│   └── v1/
+│       ├── final-results.csv      5,400 unrounded summary rows
+│       ├── timing-samples.csv     197,440 individual samples
+│       ├── corpus-manifest.json   licenses, origins, and hashes
+│       ├── environment.json       captured machine and toolchain
+│       └── analysis/              BD-rate, statistics, and SVG plots
+├── builds/                    ignored local/release artifacts
+├── .github/workflows/         native three-platform library build
 ├── docs/assets/readme/        README visuals and attribution
 ├── BENCHMARK.md                complete scientific report
+├── CMakeLists.txt
 ├── Makefile
 └── LICENSE
 ```
@@ -368,6 +643,10 @@ n148/
 ## Known limitations
 
 - N.148i is a custom experimental format with no external decoder ecosystem.
+- Public encode/decode calls require external serialization in v1 because
+  dispatch, thread settings, histogram scratch space, and the pool are global.
+- Windows v1 uses the scalar, single-thread fallback; POSIX builds retain SIMD
+  dispatch and pthread workers where supported.
 - Entropy order and DC prediction constrain multicore scaling.
 - The benchmark covers one mobile x86-64 CPU and mostly JPEG-origin source
   material, spatially resampled before testing.
