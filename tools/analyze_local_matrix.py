@@ -23,17 +23,17 @@ from typing import Any, Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNS = {
-    1: ROOT / "benchmarks/local-pinned-single-cpu0-100",
-    2: ROOT / "benchmarks/local-pinned-threads-2",
-    4: ROOT / "benchmarks/local-pinned-threads-4",
-    8: ROOT / "benchmarks/local-pinned-threads-8",
-    10: ROOT / "benchmarks/local-pinned-threads-10",
+    1: ROOT / "benchmarks/v1/local-pinned-single-cpu0-100",
+    2: ROOT / "benchmarks/v1/local-pinned-threads-2",
+    4: ROOT / "benchmarks/v1/local-pinned-threads-4",
+    8: ROOT / "benchmarks/v1/local-pinned-threads-8",
+    10: ROOT / "benchmarks/v1/local-pinned-threads-10",
 }
 REPEATS = {
-    1: ROOT / "benchmarks/local-pinned-single-cpu0-repeat-100",
-    10: ROOT / "benchmarks/local-pinned-threads-10-repeat",
+    1: ROOT / "benchmarks/v1/local-pinned-single-cpu0-repeat-100",
+    10: ROOT / "benchmarks/v1/local-pinned-threads-10-repeat",
 }
-OUT_DIR = ROOT / "benchmarks"
+OUT_DIR = ROOT / "benchmarks" / "v1"
 KEY_FIELDS = ("image_id", "quality")
 INVARIANT_FIELDS = (
     "pageid",
@@ -554,11 +554,11 @@ def main() -> None:
             "image_bd_rate_mean_percent": statistics.mean(image_bd_values),
         },
         "outputs": [
-            "benchmarks/local-thread-scaling.csv",
-            "benchmarks/local-by-quality.csv",
-            "benchmarks/local-by-image.csv",
-            "benchmarks/local-repeatability.csv",
-            "benchmarks/local-matrix-verification.json",
+            "benchmarks/v1/local-thread-scaling.csv",
+            "benchmarks/v1/local-by-quality.csv",
+            "benchmarks/v1/local-by-image.csv",
+            "benchmarks/v1/local-repeatability.csv",
+            "benchmarks/v1/local-matrix-verification.json",
         ],
     }
     verification_path = OUT_DIR / "local-matrix-verification.json"

@@ -117,7 +117,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     root = args.root.resolve()
-    benchmark_dir = root / "benchmarks"
+    benchmark_dir = root / "benchmarks" / "v1"
     compare = root / "compare"
     driver = root / "benchmark-final"
     validate = root / "validate"

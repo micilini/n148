@@ -6,8 +6,8 @@
 
 [![Language: C](https://img.shields.io/badge/language-C-00599C.svg)](src/)
 [![License: MIT](https://img.shields.io/badge/code-MIT-2ea44f.svg)](LICENSE)
-[![Corpus: 120 images](https://img.shields.io/badge/benchmark_corpus-120_images-8957e5.svg)](benchmarks/corpus-manifest.json)
-[![Validation: 0 failures](https://img.shields.io/badge/validation-0_failures-2ea44f.svg)](benchmarks/validation.log)
+[![Corpus: 120 images](https://img.shields.io/badge/benchmark_corpus-120_images-8957e5.svg)](benchmarks/v1/corpus-manifest.json)
+[![Validation: 0 failures](https://img.shields.io/badge/validation-0_failures-2ea44f.svg)](benchmarks/v1/validation.log)
 [![Format: N.148i v1](https://img.shields.io/badge/format-N.148i_v1-e34c26.svg)](#n148i-v1-bitstream)
 
 N.148i is an experimental lossy image codec in the same design space as
@@ -119,7 +119,7 @@ N.148i, despite N.148i winning the aggregate.
 
 | PSNR RGB rate–distortion | SSIMULACRA2 rate–distortion |
 |:---:|:---:|
-| ![PSNR RGB rate distortion curve](benchmarks/analysis/plots/rate-distortion-psnr_rgb_db.svg) | ![SSIMULACRA2 rate distortion curve](benchmarks/analysis/plots/rate-distortion-ssimulacra2.svg) |
+| ![PSNR RGB rate distortion curve](benchmarks/v1/analysis/plots/rate-distortion-psnr_rgb_db.svg) | ![SSIMULACRA2 rate distortion curve](benchmarks/v1/analysis/plots/rate-distortion-ssimulacra2.svg) |
 
 ### Single-thread speed
 
@@ -143,7 +143,7 @@ N.148i's multicore result is its clearest weakness. At quality 60, 10 threads
 reach only **1.386× encode speedup** and **1.022× decode speedup**. The best
 decode result is 1.038× at two threads.
 
-![N.148i thread scaling](benchmarks/analysis/plots/n148-thread-scaling.svg)
+![N.148i thread scaling](benchmarks/v1/analysis/plots/n148-thread-scaling.svg)
 
 The single-thread timing target was met by 99.33% of measured series. The
 multi-thread axis retained 3.04% median residual timing uncertainty and is
@@ -181,7 +181,7 @@ identifiable photographed person.
 
 Every file has a source URL, author, license, dimensions, source hash, and
 normalized PPM hash in
-[`benchmarks/corpus-manifest.json`](benchmarks/corpus-manifest.json).
+[`benchmarks/v1/corpus-manifest.json`](benchmarks/v1/corpus-manifest.json).
 Human-readable attribution is in [`images/CREDITS.txt`](images/CREDITS.txt).
 All PPMs are committed directly, so no separate corpus archive is required.
 
@@ -248,7 +248,7 @@ make NOTHREADS=1 validate
 The suite checks scalar/AVX2 byte identity, odd dimensions, all chroma modes,
 one versus four workers, bitstream round trips, and exact payload consumption.
 The recorded final run is in
-[`benchmarks/validation.log`](benchmarks/validation.log).
+[`benchmarks/v1/validation.log`](benchmarks/v1/validation.log).
 
 ### libjpeg-turbo comparison
 
@@ -353,7 +353,7 @@ n148/
 │   ├── corpus-0001.ppm ...    120 committed benchmark inputs
 │   ├── CREDITS.txt            human-readable attribution
 │   └── MANIFEST.json          corpus manifest mirror
-├── benchmarks/
+├── benchmarks/v1/
 │   ├── final-results.csv      5,400 unrounded summary rows
 │   ├── timing-samples.csv     197,440 individual samples
 │   ├── corpus-manifest.json   licenses, origins, and hashes
@@ -397,7 +397,7 @@ the [MIT License](LICENSE), Copyright (c) 2026 Micilini Roll.
 The benchmark photographs and artworks are **not relicensed as MIT** merely by
 being stored here. Each remains public domain, CC0, or CC BY according to its
 entry in [`images/CREDITS.txt`](images/CREDITS.txt) and
-[`benchmarks/corpus-manifest.json`](benchmarks/corpus-manifest.json). Those
+[`benchmarks/v1/corpus-manifest.json`](benchmarks/v1/corpus-manifest.json). Those
 attribution files must travel with any redistributed corpus copy. README asset
 provenance is documented separately in
 [`docs/assets/readme/README.md`](docs/assets/readme/README.md).

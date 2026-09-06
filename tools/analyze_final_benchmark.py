@@ -822,10 +822,10 @@ def plots(curves: list[dict[str, Any]], scaling: list[dict[str, Any]], directory
 def parse_args() -> argparse.Namespace:
     root = Path(__file__).resolve().parents[1]
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--results", type=Path, default=root / "benchmarks/final-results.csv")
-    parser.add_argument("--samples", type=Path, default=root / "benchmarks/timing-samples.csv")
-    parser.add_argument("--manifest", type=Path, default=root / "benchmarks/corpus-manifest.json")
-    parser.add_argument("--output-dir", type=Path, default=root / "benchmarks/analysis")
+    parser.add_argument("--results", type=Path, default=root / "benchmarks/v1/final-results.csv")
+    parser.add_argument("--samples", type=Path, default=root / "benchmarks/v1/timing-samples.csv")
+    parser.add_argument("--manifest", type=Path, default=root / "benchmarks/v1/corpus-manifest.json")
+    parser.add_argument("--output-dir", type=Path, default=root / "benchmarks/v1/analysis")
     return parser.parse_args()
 
 
