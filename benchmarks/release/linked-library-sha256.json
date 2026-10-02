@@ -1,0 +1,20 @@
+{
+  "/lib/x86_64-linux-gnu/libm.so.6": "e9c4b28d340e415b8137480ec442662f981e1399386c5931dae0e886e3639e91",
+  "/lib/x86_64-linux-gnu/libjpeg.so.8": "ac09f2cd6f8a3b8e3cb123999ce275f9bcbe31c6cf9e20212c8f297772591d15",
+  "/tmp/n148-libjxl-0.12.0/build/lib/libjxl.so.0.12": "8318cbf7af6ad8216c22a56265d8c6142c2d4543bf1abbb828dd49a301c6f2f8",
+  "/tmp/n148-libjxl-0.12.0/build/lib/libjxl_threads.so.0.12": "e818a3a8a8794815482ee6653aae960fbc5d744974978bdfe26f4d1a27cee3fa",
+  "/home/william-lima/Área de trabalho/n148/.benchmark-deps/final/webp/lib/libwebp.so.7": "a55e8e74b823dbd94e71809b05fabc762289214c23d843a20526e730e3b3d8ba",
+  "/lib/x86_64-linux-gnu/libc.so.6": "8db37cf3f2169f59a0f07ef1fea308c35656668c64c8ff294e1860f4121eb161",
+  "/lib64/ld-linux-x86-64.so.2": "cd4df4f3c7b83673d61189bf2eaebd33ca4f2853ab9772b8a25e025ef99b1e81",
+  "/tmp/n148-libjxl-0.12.0/build/lib/libjxl_cms.so.0.12": "a92baf45be06a5e6e188e802c5827c7e0fe6c3734631aecf8e5ef4b3a32024b5",
+  "/tmp/n148-libjxl-0.12.0/build/third_party/brotli/libbrotlidec.so.1": "f4102fe3747e7f9e9bc2280aa3b02bc2e40cbf300ff836cab9f23357413b4394",
+  "/tmp/n148-libjxl-0.12.0/build/third_party/brotli/libbrotlienc.so.1": "0059037aa2bf254e6fd006b8f8cd03c2f2a7c762c250b9e9351fd3023ce2c499",
+  "/lib/x86_64-linux-gnu/libstdc++.so.6": "1fd75fe70354a416d75aef22bcae68c47bd25d20e2d0568c30b1a9838cf62f11",
+  "/lib/x86_64-linux-gnu/libgcc_s.so.1": "d93224d2b0dab4247598be683adca02f5cf00586f99c187579cd7e92058fb7cb",
+  "/home/william-lima/Área de trabalho/n148/.benchmark-deps/final/webp/lib/libsharpyuv.so.0": "d8c162cb2f4d4546f4f895cce9f483e5ba035cfccbc8205f8ebaa7b8d38dd307",
+  "/tmp/n148-libjxl-0.12.0/build/third_party/brotli/libbrotlicommon.so.1": "3db7121c6d07bdef8b08f9be321dff35e164d601acaa1317b129105b8b435888",
+  "/lib/x86_64-linux-gnu/libwebp.so.7": "9664db51ec65209078abbb8bc7b699888a43ecc2f3c74ce8dd4e497175aa5bf0",
+  "/lib/x86_64-linux-gnu/libsharpyuv.so.0": "b2e62799e5dbd783a0671d53be99f7c6489567a5332a1e8f471e6bb250f294dc",
+  "/lib/x86_64-linux-gnu/libpng16.so.16": "eac265b3506df0d9110dd9143e1d0503e2daabafe1d98b23fac8ca17b71d1f6b",
+  "/lib/x86_64-linux-gnu/libz.so.1": "9b64150b28505a33d6bc3ecf709c279f6de97a1c184dbda65d06ee4537f6d286"
+}

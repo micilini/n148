@@ -2,11 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
+#include <stdint.h>
 #include "decoder.h"
 #include "tables.h"
 #include "dct.h"
 #include "cpu.h"
 #include "parallel.h"
+#include "perceptual.h"
 
 #if defined(__x86_64__) || defined(__i386__)
 #include <immintrin.h>
@@ -379,8 +382,8 @@ static long decode_plane(BitReader *reader, Plane *plane,
                          const FastDequant *dequant,
                          const HuffDecoder *dc_decoder,
                          const HuffDecoder *ac_decoder) {
-    int blocks_x = (plane->width  + 7) / 8;
-    int blocks_y = (plane->height + 7) / 8;
+    int blocks_x = plane->width / 8 + (plane->width % 8 != 0);
+    int blocks_y = plane->height / 8 + (plane->height % 8 != 0);
     int dc_previous = 0;
     int use_avx2 = 0;
 #if defined(__x86_64__) || defined(__i386__)
@@ -463,6 +466,94 @@ static long decode_plane(BitReader *reader, Plane *plane,
         }
     }
     return (long) blocks_x * blocks_y;
+}
+
+int n148_reconstruct_coeff_plane_ex(const short *quantized, long count,
+                                    int width, int height, int quality,
+                                    int chroma_plane, int perceptual_color,
+                                    Plane *output) {
+    if (!quantized || !output || width <= 0 || height <= 0) return 0;
+    int blocks_x = width / 8 + (width % 8 != 0);
+    int blocks_y = height / 8 + (height % 8 != 0);
+    if ((size_t) blocks_x > SIZE_MAX / (size_t) blocks_y) return 0;
+    size_t block_count = (size_t) blocks_x * (size_t) blocks_y;
+    if (block_count > LONG_MAX || count != (long) block_count) return 0;
+
+    init_dct_tables();
+    int quantization[8][8];
+    const int (*base)[8];
+    if (perceptual_color) {
+        base = chroma_plane ? Q_PERCEPTUAL_OPPONENT_BASE :
+                              Q_PERCEPTUAL_INTENSITY_BASE;
+    } else {
+        base = chroma_plane ? Q_CHROMA_BASE : Q_LUMA_BASE;
+    }
+    scale_table(base, quality, quantization);
+    FastDequant dequant;
+    build_fast_dequant(quantization, &dequant);
+    *output = create_plane(width, height);
+    if (!output->data) return 0;
+
+    int use_avx2 = 0;
+#if defined(__x86_64__) || defined(__i386__)
+    use_avx2 = n148_cpu_level() >= N148_CPU_AVX2;
+#endif
+    for (int by = 0; by < blocks_y; by++) {
+        for (int bx = 0; bx < blocks_x; bx++) {
+            const short *zz = quantized +
+                ((long) by * blocks_x + bx) * 64;
+            int max_x = bx * 8 + 8 <= width ? 8 : width - bx * 8;
+            int max_y = by * 8 + 8 <= height ? 8 : height - by * 8;
+            unsigned char *destination = output->data +
+                (long)(by * 8) * width + bx * 8;
+
+            int nonzero_ac = 0;
+            for (int position = 1; position < 64; position++)
+                nonzero_ac += zz[position] != 0;
+            if (nonzero_ac == 0) {
+                float flat = zz[0] * dequant.multiplier[0] + 128.0f;
+                if (flat < 0.0f) flat = 0.0f;
+                if (flat > 255.0f) flat = 255.0f;
+                unsigned char value = (unsigned char)(flat + 0.5f);
+                for (int row = 0; row < max_y; row++)
+                    memset(destination + (long) row * width, value,
+                           (size_t) max_x);
+                continue;
+            }
+
+            float block[64] = {0};
+            for (int position = 0; position < 64; position++) {
+                int natural = ZIGZAG[position];
+                block[natural] = zz[position] * dequant.multiplier[natural];
+            }
+#if defined(__x86_64__) || defined(__i386__)
+            if (max_x == 8 && max_y == 8 && use_avx2) {
+                idct_block_store_avx2(block, destination, width);
+                continue;
+            }
+            if (use_avx2) idct_block_avx2(block, block);
+            else
+#endif
+            idct_block_fast(block, block);
+            for (int row = 0; row < max_y; row++) {
+                unsigned char *target = destination + (long) row * width;
+                for (int column = 0; column < max_x; column++) {
+                    float value = block[row * 8 + column];
+                    if (value < 0.0f) value = 0.0f;
+                    if (value > 255.0f) value = 255.0f;
+                    target[column] = (unsigned char)(value + 0.5f);
+                }
+            }
+        }
+    }
+    return 1;
+}
+
+int n148_reconstruct_coeff_plane(const short *quantized, long count,
+                                 int width, int height, int quality,
+                                 int chroma_plane, Plane *output) {
+    return n148_reconstruct_coeff_plane_ex(quantized, count, width, height,
+                                            quality, chroma_plane, 0, output);
 }
 
 int decode_image(unsigned char *buffer, long buffer_size,
@@ -846,7 +937,7 @@ static void ycbcr_row_fma(const unsigned char *luma,
 typedef struct {
     Plane *y, *cb, *cr;
     Image *output;
-    int smooth, stretch_x, stretch_y, use_avx2, use_fma;
+    int smooth, stretch_x, stretch_y, use_avx2, use_fma, perceptual_color;
 } MergeJob;
 
 // Reconstructs a band of output rows. Every worker keeps its own
@@ -896,6 +987,13 @@ static void merge_rows(long start, long end, int worker, void *context) {
             }
         }
 
+        if (job->perceptual_color) {
+            for (int px = 0; px < width; px++)
+                n148_perceptual_to_rgb(luma[px], row_cb[px], row_cr[px],
+                                       out + px * 3);
+            continue;
+        }
+
 #if defined(__x86_64__) || defined(__i386__)
         if (job->use_fma) { ycbcr_row_fma(luma, row_cb, row_cr, out, width); continue; }
         if (job->use_avx2) { ycbcr_row_avx2(luma, row_cb, row_cr, out, width); continue; }
@@ -916,7 +1014,8 @@ static void merge_rows(long start, long end, int worker, void *context) {
 #undef MERGE_STACK_WIDTH
 }
 
-int merge_channels(Plane *y, Plane *cb, Plane *cr, int smooth, Image *output) {
+int n148_merge_channels_ex(Plane *y, Plane *cb, Plane *cr, int smooth,
+                           int perceptual_color, Image *output) {
     int width = y->width, height = y->height;
 
     if (width <= 0 || height <= 0 || !y->data || !cb->data || !cr->data ||
@@ -932,6 +1031,7 @@ int merge_channels(Plane *y, Plane *cb, Plane *cr, int smooth, Image *output) {
     MergeJob job;
     job.y = y; job.cb = cb; job.cr = cr; job.output = output;
     job.smooth = smooth;
+    job.perceptual_color = perceptual_color;
     job.stretch_x = (cb->width  < width);
     job.stretch_y = (cb->height < height);
 #if defined(__x86_64__) || defined(__i386__)
@@ -942,6 +1042,7 @@ int merge_channels(Plane *y, Plane *cb, Plane *cr, int smooth, Image *output) {
     job.use_avx2 = 0;
     job.use_fma = 0;
 #endif
+    if (perceptual_color) n148_perceptual_init();
 
     /* On small images the colour merge is only a few tenths of a
        millisecond; dispatching it to a pool costs more than the work saved,
@@ -951,4 +1052,8 @@ int merge_channels(Plane *y, Plane *cb, Plane *cr, int smooth, Image *output) {
     else
         n148_parallel_for(height, merge_rows, &job);
     return 1;
+}
+
+int merge_channels(Plane *y, Plane *cb, Plane *cr, int smooth, Image *output) {
+    return n148_merge_channels_ex(y, cb, cr, smooth, 0, output);
 }

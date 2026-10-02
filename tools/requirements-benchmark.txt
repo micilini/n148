@@ -1,0 +1,6 @@
+numpy==2.5.3
+scipy==1.18.1
+Pillow==12.3.0
+scikit-image==0.26.0
+sewar==0.4.8
+matplotlib==3.11.2

@@ -1,12 +1,14 @@
 # N.148i release library builds
 # Copyright (c) 2026 Micilini Roll. Licensed under the MIT License.
 
-name: Build libraries
+name: V2 libraries
 
 on:
   workflow_dispatch:
   pull_request:
   push:
+    branches:
+      - "**"
     tags:
       - "v*"
 
@@ -21,14 +23,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             artifact: linux-x86_64
             cmake_args: ""
-          - os: windows-latest
+          - os: windows-2022
             artifact: windows-x86_64
-            cmake_args: ""
-          - os: macos-latest
-            artifact: macos-universal
+            cmake_args: "-A x64"
+          - os: macos-15
+            artifact: macos-universal-arm64-test
+            cmake_args: "-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64"
+          - os: macos-15-intel
+            artifact: macos-universal-intel-test
             cmake_args: "-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64"
 
     steps:
@@ -53,9 +58,28 @@ jobs:
       - name: Install
         run: cmake --install cmake-build --config Release
 
+      - name: Configure installed library consumers
+        shell: bash
+        env:
+          N148I_CMAKE_ARGS: ${{ matrix.cmake_args }}
+        run: >-
+          cmake -S examples -B consumer-build
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/builds/${{ matrix.artifact }}"
+          ${N148I_CMAKE_ARGS}
+
+      - name: Build installed library consumers
+        run: cmake --build consumer-build --config Release --parallel
+
+      - name: Test installed shared and static libraries
+        shell: bash
+        run: |
+          export PATH="$GITHUB_WORKSPACE/builds/${{ matrix.artifact }}/bin:$PATH"
+          ctest --test-dir consumer-build -C Release --output-on-failure
+
       - name: Upload package
         uses: actions/upload-artifact@v4
         with:
-          name: n148i-${{ matrix.artifact }}
+          name: n148i-V2-${{ matrix.artifact }}
           path: builds/${{ matrix.artifact }}
           if-no-files-found: error

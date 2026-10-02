@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <limits.h>
 #if defined(_MSC_VER)
 #include <intrin.h>
 #endif
@@ -172,12 +173,7 @@ static void build_fast_quant(int quantization[8][8], FastQuant *out) {
 // Running it once and storing the quantized result lets the symbol
 // counting pass and the bit writing pass share the work.
 
-typedef struct {
-    short *coefficients;    // 64 quantized values per block, zig-zag order
-    unsigned long long *nonzero_masks;
-    unsigned char *nonzero_counts;
-    long   count;
-} CoeffCache;
+typedef N148CoeffPlane CoeffCache;
 
 static inline int trailing_zero_count(unsigned long long value) {
 #if defined(_MSC_VER) && defined(_M_X64)
@@ -383,14 +379,22 @@ static void quantize_rows(long start, long end, int worker, void *context) {
 
 static long quantize_plane(Plane *plane, const FastQuant *quant, CoeffCache *cache,
                            int collect, long (*ac_freq)[256]) {
-    int blocks_x = (plane->width  + 7) / 8;
-    int blocks_y = (plane->height + 7) / 8;
-    long total = (long) blocks_x * blocks_y;
+    int blocks_x = plane->width / 8 + (plane->width % 8 != 0);
+    int blocks_y = plane->height / 8 + (plane->height % 8 != 0);
+    if (blocks_x <= 0 || blocks_y <= 0 ||
+        (size_t) blocks_x > SIZE_MAX / (size_t) blocks_y) return 0;
+    size_t block_count = (size_t) blocks_x * (size_t) blocks_y;
+    if (block_count > LONG_MAX ||
+        block_count > SIZE_MAX / (64 * sizeof(short)) ||
+        block_count > SIZE_MAX / sizeof(*cache->nonzero_masks)) return 0;
+    long total = (long) block_count;
 
     cache->count = total;
-    size_t coefficient_bytes = (size_t) total * 64 * sizeof(short);
-    size_t mask_bytes = (size_t) total * sizeof(*cache->nonzero_masks);
-    size_t count_bytes = collect ? (size_t) total : 0;
+    size_t coefficient_bytes = block_count * 64 * sizeof(short);
+    size_t mask_bytes = block_count * sizeof(*cache->nonzero_masks);
+    size_t count_bytes = collect ? block_count : 0;
+    if (coefficient_bytes > SIZE_MAX - mask_bytes ||
+        coefficient_bytes + mask_bytes > SIZE_MAX - count_bytes) return 0;
     cache->coefficients = (short *) malloc(coefficient_bytes + mask_bytes +
                                            count_bytes);
     if (!cache->coefficients) return 0;
@@ -649,4 +653,43 @@ int encode_image(Plane *y, Plane *cb, Plane *cr, int quality, int optimize,
     stats->data_size  = writer.size;
     *out_buffer = writer.buffer;
     return 1;
+}
+
+int n148_quantize_planes_ex(Plane *y, Plane *cb, Plane *cr, int quality,
+                            int perceptual_color,
+                            N148CoeffPlane output[3]) {
+    if (!y || !cb || !cr || !output || !y->data || !cb->data || !cr->data)
+        return 0;
+    memset(output, 0, 3 * sizeof(*output));
+    init_dct_tables();
+
+    int luma_quant[8][8], chroma_quant[8][8];
+    const int (*luma_base)[8] = perceptual_color ?
+        Q_PERCEPTUAL_INTENSITY_BASE : Q_LUMA_BASE;
+    const int (*chroma_base)[8] = perceptual_color ?
+        Q_PERCEPTUAL_OPPONENT_BASE : Q_CHROMA_BASE;
+    scale_table(luma_base, quality, luma_quant);
+    scale_table(chroma_base, quality, chroma_quant);
+    FastQuant fast_luma, fast_chroma;
+    build_fast_quant(luma_quant, &fast_luma);
+    build_fast_quant(chroma_quant, &fast_chroma);
+
+    if (!quantize_plane(y, &fast_luma, &output[0], 0, NULL) ||
+        !quantize_plane(cb, &fast_chroma, &output[1], 0, NULL) ||
+        !quantize_plane(cr, &fast_chroma, &output[2], 0, NULL)) {
+        for (int index = 0; index < 3; index++) cache_release(&output[index]);
+        return 0;
+    }
+    return 1;
+}
+
+int n148_quantize_planes(Plane *y, Plane *cb, Plane *cr, int quality,
+                         N148CoeffPlane output[3]) {
+    return n148_quantize_planes_ex(y, cb, cr, quality, 0, output);
+}
+
+void n148_free_coeff_plane(N148CoeffPlane *plane) {
+    if (!plane) return;
+    cache_release(plane);
+    memset(plane, 0, sizeof(*plane));
 }

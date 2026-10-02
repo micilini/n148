@@ -1,0 +1,369 @@
+{
+  "status": "pass",
+  "failure": null,
+  "public_symbols_expected": [
+    "n148i_decode_memory",
+    "n148i_encode_memory",
+    "n148i_encode_options_init",
+    "n148i_format_version",
+    "n148i_free_buffer",
+    "n148i_free_image",
+    "n148i_library_version",
+    "n148i_read_header",
+    "n148i_result_string",
+    "n148i_simd_force",
+    "n148i_simd_level",
+    "n148i_simd_name"
+  ],
+  "gates": {
+    "naming_audit": {
+      "argv": [
+        "python3",
+        "tools/audit_naming.py"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "make_normal": {
+      "argv": [
+        "make",
+        "-j2",
+        "compare",
+        "validate",
+        "libraries"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "format_1_sentinel": {
+      "argv": [
+        "/home/william-lima/Área de trabalho/n148/compare",
+        "images/example.ppm",
+        "50",
+        "20"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true,
+      "bytes": 2290
+    },
+    "validation_suite": {
+      "argv": [
+        "/home/william-lima/Área de trabalho/n148/validate"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "make_without_threads": {
+      "argv": [
+        "make",
+        "-j2",
+        "NOTHREADS=1",
+        "-B",
+        "validate"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "validation_without_threads": {
+      "argv": [
+        "/home/william-lima/Área de trabalho/n148/validate"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "cmake_configure": {
+      "argv": [
+        "cmake",
+        "-S",
+        "/home/william-lima/Área de trabalho/n148",
+        "-B",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/cmake",
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "cmake_build": {
+      "argv": [
+        "cmake",
+        "--build",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/cmake",
+        "--parallel",
+        "2"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "ctest": {
+      "argv": [
+        "ctest",
+        "--test-dir",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/cmake",
+        "--output-on-failure"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "sanitizer_configure": {
+      "argv": [
+        "cmake",
+        "-S",
+        "/home/william-lima/Área de trabalho/n148",
+        "-B",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/sanitizers",
+        "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+        "-DCMAKE_C_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer",
+        "-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer",
+        "-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "sanitizer_build": {
+      "argv": [
+        "cmake",
+        "--build",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/sanitizers",
+        "--parallel",
+        "2"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "asan_ubsan_lsan": {
+      "argv": [
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/sanitizers/validate"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "make_normal_restore": {
+      "argv": [
+        "make",
+        "-j2",
+        "-B",
+        "compare",
+        "validate",
+        "libraries"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "dynamic_symbols": {
+      "argv": [
+        "nm",
+        "-D",
+        "--defined-only",
+        "/home/william-lima/Área de trabalho/n148/libn148i.so.2.0.0"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true,
+      "exported_symbols": [
+        "n148i_decode_memory",
+        "n148i_encode_memory",
+        "n148i_encode_options_init",
+        "n148i_format_version",
+        "n148i_free_buffer",
+        "n148i_free_image",
+        "n148i_library_version",
+        "n148i_read_header",
+        "n148i_result_string",
+        "n148i_simd_force",
+        "n148i_simd_level",
+        "n148i_simd_name"
+      ],
+      "exported_symbol_count": 12
+    },
+    "soname": {
+      "argv": [
+        "readelf",
+        "-d",
+        "/home/william-lima/Área de trabalho/n148/libn148i.so.2.0.0"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "symbol_version_node": {
+      "argv": [
+        "readelf",
+        "--version-info",
+        "/home/william-lima/Área de trabalho/n148/libn148i.so.2.0.0"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "cmake_install": {
+      "argv": [
+        "cmake",
+        "--install",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/cmake",
+        "--prefix",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/install"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "pkg_config": {
+      "argv": [
+        "pkg-config",
+        "--cflags",
+        "--libs",
+        "n148i"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "pkg_config_consumer_build": {
+      "argv": [
+        "cc",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/consumer.c",
+        "-I/tmp/n148-release-prefix-vechahll/install/lib/pkgconfig/../../include",
+        "-L/tmp/n148-release-prefix-vechahll/install/lib/pkgconfig/../../lib",
+        "-ln148i",
+        "-o",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/consumer-pkg-config"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "pkg_config_consumer_run": {
+      "argv": [
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/consumer-pkg-config"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "cmake_consumer_configure": {
+      "argv": [
+        "cmake",
+        "-S",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/cmake",
+        "-B",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/cmake-build",
+        "-DCMAKE_PREFIX_PATH=/tmp/n148-release-prefix-vechahll/install"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "cmake_consumer_build": {
+      "argv": [
+        "cmake",
+        "--build",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/cmake-build",
+        "--parallel",
+        "2"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "cmake_consumer_run": {
+      "argv": [
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/cmake-build/consumer"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "static_consumer_build": {
+      "argv": [
+        "cc",
+        "-DN148I_STATIC_DEFINE",
+        "-I/tmp/n148-release-prefix-vechahll/install/include",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/consumer.c",
+        "/tmp/n148-release-prefix-vechahll/install/lib/static/libn148i.a",
+        "-pthread",
+        "-lm",
+        "-o",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/consumer-static"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "static_consumer_run": {
+      "argv": [
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/consumer-static"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "feature_mask_values": {
+      "argv": [
+        "cc",
+        "-std=c11",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-I/tmp/n148-release-prefix-vechahll/install/include",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/feature-values.c",
+        "-o",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/feature-values"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "cpp_header": {
+      "argv": [
+        "c++",
+        "-std=c++17",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-I/tmp/n148-release-prefix-vechahll/install/include",
+        "-c",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/header.cpp",
+        "-o",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/header.o"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "readme_example_build": {
+      "argv": [
+        "cc",
+        "/home/william-lima/Área de trabalho/n148/examples/memory_roundtrip.c",
+        "-I/tmp/n148-release-prefix-vechahll/install/lib/pkgconfig/../../include",
+        "-L/tmp/n148-release-prefix-vechahll/install/lib/pkgconfig/../../lib",
+        "-ln148i",
+        "-o",
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/readme-example"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    },
+    "readme_example_run": {
+      "argv": [
+        "/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/readme-example"
+      ],
+      "cwd": "/home/william-lima/Área de trabalho/n148",
+      "exit_code": 0,
+      "passed": true
+    }
+  }
+}

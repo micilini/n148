@@ -1,0 +1,581 @@
+$ python3 tools/audit_naming.py
+naming audit PASS (60 active files)
+
+$ make -j2 compare validate libraries
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -DN148I_STATIC_DEFINE src/compare_cli.c \
+	libn148i.a -o compare -pthread -lm -ljpeg
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -DN148I_STATIC_DEFINE src/validate_cli.c \
+	libn148i.a -o validate -pthread -lm
+make: Nothing to be done for 'libraries'.
+
+$ '/home/william-lima/Área de trabalho/n148/compare' images/example.ppm 50 20
+images/example.ppm 320x240 q=50 chroma=2 threads=12 reps=20
+N148i  enc    0.456 ms  dec    0.158 ms      2290 B  PSNR  34.696 dB
+JPEG   enc    0.822 ms  dec    0.176 ms      2584 B  PSNR  34.657 dB
+N/J    enc    0.555x    dec    0.899x       0.886x size
+N148i decode stages: planes    0.074 ms  merge    0.084 ms  other    0.000 ms
+
+$ '/home/william-lima/Área de trabalho/n148/validate'
+kind,name,cpu,threads,chroma,width,height,file_bytes,payload_bytes,bytes_consumed,psnr_db,detail,result
+comparison,rans_core,scalar,1,0,0,0,1161,8192,8192,0.0,normalized_roundtrip,PASS
+comparison,rans_adaptive_state,scalar,1,0,0,0,2352,6144,6144,0.0,three_plane_integer_model_state_match,PASS
+cycle,example_scalar,scalar,1,2,320,240,2290,2145,2145,34.696364629236,roundtrip_exact,PASS
+cycle,example_avx2,AVX2,1,2,320,240,2290,2145,2145,34.696364629236,roundtrip_exact,PASS
+comparison,scalar_vs_avx2,scalar+AVX2,1,2,320,240,2290,2145,2145,34.696364629236,byte_and_psnr_identical,PASS
+comparison,public_api_vs_internal,scalar,1,2,320,240,2290,2145,2145,34.696364629236,memory_stride_and_bitstream_identical,PASS
+comparison,rans_vs_format_1_coefficients,scalar+AVX2,1+4,2,320,240,2251,2145,2145,34.696364629236,coefficients_pixels_determinism_and_v1_decode,PASS
+comparison,context_model_trace,scalar+AVX2,1+4,2,320,240,2236,1853,1853,34.696364629236,encoder_decoder_model_hash_and_coefficients,PASS
+comparison,reconstructed_intra_prediction,scalar+AVX2,1+4,2,320,240,1594,1151,1151,0.0,modes_379_49_255_1117_coefficients_and_uniform_drift,PASS
+comparison,perceptual_color_transform,scalar,1,0,16,16,0,0,0,46.242195944944,max_channel_error_14_at_0_221_255_to_14_221_255_over_4096_rgb_samples,PASS
+comparison,perceptual_color,scalar+AVX2,1+4,0+1+2,320,240,2005,1556,1556,0.0,all_feature_combinations_rgb_roundtrip_and_determinism,PASS
+comparison,adaptive_quantization,scalar+AVX2,1+4,0+1+2,320,240,1747,0,0,0.0,levels_859_43_1_1_map_coefficients_corruption_and_perceptual_combination_determinism,PASS
+comparison,variable_transform,scalar+AVX2,1+4,2,320,240,1617,0,0,0.0,strategies_0_417_43_q14_hash_b17cb6d69247a7e9_forced_sizes_edge_count_and_combination_rejection,PASS
+comparison,rate_distortion_optimization,scalar+AVX2,1+4,2,320,240,1567,1586,1586,0.0,effort0_1594_effort5_1567_effort9_1586_changed_3_trellis_modes_dependencies_and_combination_determinism,PASS
+comparison,causal_loop_filter,scalar+AVX2,1+4,2,320,240,1412,1037,1037,0.0,base_1477_filter_1412_changed_213916_deblock_8_dering_1_causal_reference_dependencies_and_combination_determinism,PASS
+comparison,directional_intra,scalar+AVX2,1+4,0+1+2,320,240,1393,0,0,0.0,profiles_1741_1385_1393_splits_273_modes_0x3ff_directional_4x4_contextual_rdo_trellis_compatibility_and_determinism,PASS
+comparison,chroma_format_matrix,scalar+AVX2,1+4,0+1+2,320,240,0,0,0,0.0,formats_1_to_7_layout_matrix_21_of_21_exact_roundtrips_and_determinism,PASS
+comparison,reconstruction_aware_chroma,scalar+AVX2,1+4,2,320,240,1512,1037,1037,0.0,format_3_payload_compatibility_reconstruction_error_5226898_to_4458695_422_reconstruction_error_3631615_to_3328178_444_canonical_odd_edges_and_determinism,PASS
+comparison,joint_chroma_intra,scalar+AVX2,1+4,2,320,240,1474,1003,1003,0.0,payload_revision_6_stored_mode_slots_6000_joint_chroma_corruption_and_determinism,PASS
+comparison,calibrated_chroma_quant,scalar+AVX2,1+4,2,320,240,1583,1090,1090,0.0,calibrated_chroma_quality_55_header_byte27_corruption_all_layouts_and_determinism,PASS
+comparison,frame_segmentation,scalar+AVX2,1+4,2,320,240,1710,1193,1193,0.0,payload_revision_7_segments_300_frame_cluster_map_corruption_all_layouts_and_determinism,PASS
+comparison,adaptive_loop_filter,scalar+AVX2,1+4,2,320,240,1702,1191,1191,0.0,payload_revision_9_segment_filter_levels_2_1_1_0_dependencies_corruption_all_layouts_and_determinism,PASS
+comparison,calibrated_luma_quant,scalar+AVX2,1+4,2,320,240,1761,1225,1225,0.0,format_4_payload_compatibility_calibrated_luma_feature_dependencies_and_determinism,PASS
+comparison,variable_luma_transform,scalar+AVX2,1+4,2,320,240,1224,755,755,0.0,payload_revision_11_dct16_284_of_300_calibrated_luma_control_dependencies_counts_independent_switching_full_feature_composition_corruption_and_determinism,PASS
+comparison,perceptual_luma_trellis,scalar+AVX2,1+4,0+1+2,320,240,1199,757,757,0.0,perceptual_luma_trellis_opt_in_all_layouts_dependencies_and_determinism,PASS
+comparison,quant_adaptive_luma_filter,scalar+AVX2,1+4,0+1+2,320,240,1220,753,753,0.0,strengths_5_3_2_2_1_q60_exact_reconstruction_all_layouts_dependencies_and_determinism,PASS
+comparison,automatic_chroma,scalar+AVX2,1+4,3,320,240,2194,1617,1617,0.0,effort0_exact_420_auto_is_concrete_best_candidate_high_frequency_fixture_selects_444_and_determinism,PASS
+comparison,fidelity_tools,scalar+AVX2,1+4,2,320,240,1224,755,755,0.0,format_6_compatibility_dct32_0_combined_prediction_dependencies_matrix_hash_and_determinism,PASS
+comparison,adaptive_rich_context,scalar+AVX2,1+4,2,320,240,1891,1345,1345,0.0,format_7_format_6_compatibility_adaptive_rich_context_state_fallback_multiple_references_dependencies_and_determinism,PASS
+comparison,format_7_full_trellis,scalar+AVX2,1,2,320,240,2092,1524,1524,0.0,explicit_full_trellis_roundtrip_and_determinism,PASS
+comparison,format_7_spectral_luma,scalar+AVX2,1,2,320,240,2074,1486,1486,0.0,flagged_table_roundtrip_old_profile_isolated_dependencies_and_determinism,PASS
+comparison,format_7_refined_spectral_luma,scalar+AVX2,1,2,320,240,2076,1465,1465,0.0,refined_table_roundtrip_old_spectral_isolated_dependencies_and_determinism,PASS
+comparison,format_7_structural_luma,scalar+auto,1,2,33,35,0,0,0,0.0,24_odd_stride_chroma_effort_pairs_extreme_quality_dependencies,PASS
+comparison,format_7_balanced,scalar+auto,1,2,33,35,0,0,0,0.0,24_odd_stride_chroma_effort_pairs_extreme_quality_dependencies,PASS
+comparison,format_7_detail,scalar+auto,1,2,33,35,0,0,0,0.0,24_odd_stride_chroma_effort_pairs_extreme_quality_dependencies,PASS
+comparison,format_7_selective_luma_search,scalar+AVX2,1,2,317,241,33673,32632,32632,0.0,effort4_changes_odd_fixture_roundtrip_header_and_determinism,PASS
+comparison,directional_intra_odd_dimensions,scalar+auto,1+4,2,317,241,24735,0,0,0.0,split_467_partial_4x4_roundtrip_and_determinism,PASS
+comparison,chroma_format_matrix_odd,scalar+AVX2,1+4,0+1+2,317,241,0,0,0,0.0,formats_1_to_7_layout_matrix_21_of_21_exact_roundtrips_and_determinism,PASS
+comparison,reconstruction_aware_chroma_odd,scalar+AVX2,1+4,2,317,241,27493,26295,26295,0.0,format_3_payload_compatibility_reconstruction_error_619021315_to_546710228_422_reconstruction_error_483281486_to_431041873_444_canonical_odd_edges_and_determinism,PASS
+comparison,joint_chroma_intra_odd,scalar+AVX2,1+4,2,317,241,27383,26228,26228,0.0,payload_revision_6_stored_mode_slots_6240_joint_chroma_corruption_and_determinism,PASS
+comparison,calibrated_chroma_quant_odd,scalar+AVX2,1+4,2,317,241,28791,27601,27601,0.0,calibrated_chroma_quality_55_header_byte27_corruption_all_layouts_and_determinism,PASS
+comparison,frame_segmentation_odd,scalar+AVX2,1+4,2,317,241,28974,27774,27774,0.0,payload_revision_7_segments_320_frame_cluster_map_corruption_all_layouts_and_determinism,PASS
+comparison,adaptive_loop_filter_odd,scalar+AVX2,1+4,2,317,241,28956,27752,27752,0.0,payload_revision_9_segment_filter_levels_2_1_1_0_dependencies_corruption_all_layouts_and_determinism,PASS
+comparison,calibrated_luma_quant_odd,scalar+AVX2,1+4,2,317,241,28169,27043,27043,0.0,format_4_payload_compatibility_calibrated_luma_feature_dependencies_and_determinism,PASS
+comparison,variable_luma_transform_odd,scalar+AVX2,1+4,2,317,241,18583,17552,17552,0.0,payload_revision_11_dct16_133_of_320_calibrated_luma_control_dependencies_counts_independent_switching_full_feature_composition_corruption_and_determinism,PASS
+comparison,automatic_chroma_odd,scalar+AVX2,1+4,3,317,241,80852,79442,79442,0.0,effort0_exact_420_auto_is_concrete_best_candidate_high_frequency_fixture_selects_444_and_determinism,PASS
+cycle,odd_chroma0_t1,AVX2+FMA,1,0,317,241,48373,48177,48177,17.953896458128,roundtrip_exact,PASS
+cycle,odd_chroma0_t4,AVX2+FMA,4,0,317,241,48373,48177,48177,17.953896458128,roundtrip_exact,PASS
+comparison,odd_chroma0_t1_vs_t4,auto,1+4,0,317,241,48373,48177,48177,17.953896458128,byte_and_psnr_identical,PASS
+cycle,odd_chroma1_t1,AVX2+FMA,1,1,317,241,31929,31737,31737,14.835048310672,roundtrip_exact,PASS
+cycle,odd_chroma1_t4,AVX2+FMA,4,1,317,241,31929,31737,31737,14.835048310672,roundtrip_exact,PASS
+comparison,odd_chroma1_t1_vs_t4,auto,1+4,1,317,241,31929,31737,31737,14.835048310672,byte_and_psnr_identical,PASS
+cycle,odd_chroma2_t1,AVX2+FMA,1,2,317,241,25390,25207,25207,13.800568575044,roundtrip_exact,PASS
+cycle,odd_chroma2_t4,AVX2+FMA,4,2,317,241,25390,25207,25207,13.800568575044,roundtrip_exact,PASS
+comparison,odd_chroma2_t1_vs_t4,auto,1+4,2,317,241,25390,25207,25207,13.800568575044,byte_and_psnr_identical,PASS
+validation PASS (0 failures)
+
+$ make -j2 NOTHREADS=1 -B validate
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/n148i.c -o .build/make/release-nothreads/n148i.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/header.c -o .build/make/release-nothreads/header.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/ppm.c -o .build/make/release-nothreads/ppm.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/tables.c -o .build/make/release-nothreads/tables.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/dct.c -o .build/make/release-nothreads/dct.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/cpu.c -o .build/make/release-nothreads/cpu.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/parallel.c -o .build/make/release-nothreads/parallel.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/huffman.c -o .build/make/release-nothreads/huffman.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/rans.c -o .build/make/release-nothreads/rans.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/intra.c -o .build/make/release-nothreads/intra.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/perceptual.c -o .build/make/release-nothreads/perceptual.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/adaptive_quant.c -o .build/make/release-nothreads/adaptive_quant.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/segmentation.c -o .build/make/release-nothreads/segmentation.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/variable_transform.c -o .build/make/release-nothreads/variable_transform.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/rdo.c -o .build/make/release-nothreads/rdo.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/loop_filter.c -o .build/make/release-nothreads/loop_filter.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/entropy_payload.c -o .build/make/release-nothreads/entropy_payload.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/directional_intra.c -o .build/make/release-nothreads/directional_intra.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/chroma_profile.c -o .build/make/release-nothreads/chroma_profile.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/luma_profile.c -o .build/make/release-nothreads/luma_profile.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/fidelity_profile.c -o .build/make/release-nothreads/fidelity_profile.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/entropy_profile.c -o .build/make/release-nothreads/entropy_profile.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/encoder.c -o .build/make/release-nothreads/encoder.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -fPIC -fvisibility=hidden -MMD -MP -c src/decoder.c -o .build/make/release-nothreads/decoder.o
+ar rcs libn148i.a .build/make/release-nothreads/n148i.o .build/make/release-nothreads/header.o .build/make/release-nothreads/ppm.o .build/make/release-nothreads/tables.o .build/make/release-nothreads/dct.o .build/make/release-nothreads/cpu.o .build/make/release-nothreads/parallel.o .build/make/release-nothreads/huffman.o .build/make/release-nothreads/rans.o .build/make/release-nothreads/intra.o .build/make/release-nothreads/perceptual.o .build/make/release-nothreads/adaptive_quant.o .build/make/release-nothreads/segmentation.o .build/make/release-nothreads/variable_transform.o .build/make/release-nothreads/rdo.o .build/make/release-nothreads/loop_filter.o .build/make/release-nothreads/entropy_payload.o .build/make/release-nothreads/directional_intra.o .build/make/release-nothreads/chroma_profile.o .build/make/release-nothreads/luma_profile.o .build/make/release-nothreads/fidelity_profile.o .build/make/release-nothreads/entropy_profile.o .build/make/release-nothreads/encoder.o .build/make/release-nothreads/decoder.o
+ranlib libn148i.a
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -DN148_NO_THREADS -DN148I_STATIC_DEFINE src/validate_cli.c \
+	libn148i.a -o validate  -lm
+
+$ '/home/william-lima/Área de trabalho/n148/validate'
+kind,name,cpu,threads,chroma,width,height,file_bytes,payload_bytes,bytes_consumed,psnr_db,detail,result
+comparison,rans_core,scalar,1,0,0,0,1161,8192,8192,0.0,normalized_roundtrip,PASS
+comparison,rans_adaptive_state,scalar,1,0,0,0,2352,6144,6144,0.0,three_plane_integer_model_state_match,PASS
+cycle,example_scalar,scalar,1,2,320,240,2290,2145,2145,34.696364629236,roundtrip_exact,PASS
+cycle,example_avx2,AVX2,1,2,320,240,2290,2145,2145,34.696364629236,roundtrip_exact,PASS
+comparison,scalar_vs_avx2,scalar+AVX2,1,2,320,240,2290,2145,2145,34.696364629236,byte_and_psnr_identical,PASS
+comparison,public_api_vs_internal,scalar,1,2,320,240,2290,2145,2145,34.696364629236,memory_stride_and_bitstream_identical,PASS
+comparison,rans_vs_format_1_coefficients,scalar+AVX2,1+4,2,320,240,2251,2145,2145,34.696364629236,coefficients_pixels_determinism_and_v1_decode,PASS
+comparison,context_model_trace,scalar+AVX2,1+4,2,320,240,2236,1853,1853,34.696364629236,encoder_decoder_model_hash_and_coefficients,PASS
+comparison,reconstructed_intra_prediction,scalar+AVX2,1+4,2,320,240,1594,1151,1151,0.0,modes_379_49_255_1117_coefficients_and_uniform_drift,PASS
+comparison,perceptual_color_transform,scalar,1,0,16,16,0,0,0,46.242195944944,max_channel_error_14_at_0_221_255_to_14_221_255_over_4096_rgb_samples,PASS
+comparison,perceptual_color,scalar+AVX2,1+4,0+1+2,320,240,2005,1556,1556,0.0,all_feature_combinations_rgb_roundtrip_and_determinism,PASS
+comparison,adaptive_quantization,scalar+AVX2,1+4,0+1+2,320,240,1747,0,0,0.0,levels_859_43_1_1_map_coefficients_corruption_and_perceptual_combination_determinism,PASS
+comparison,variable_transform,scalar+AVX2,1+4,2,320,240,1617,0,0,0.0,strategies_0_417_43_q14_hash_b17cb6d69247a7e9_forced_sizes_edge_count_and_combination_rejection,PASS
+comparison,rate_distortion_optimization,scalar+AVX2,1+4,2,320,240,1567,1586,1586,0.0,effort0_1594_effort5_1567_effort9_1586_changed_3_trellis_modes_dependencies_and_combination_determinism,PASS
+comparison,causal_loop_filter,scalar+AVX2,1+4,2,320,240,1412,1037,1037,0.0,base_1477_filter_1412_changed_213916_deblock_8_dering_1_causal_reference_dependencies_and_combination_determinism,PASS
+comparison,directional_intra,scalar+AVX2,1+4,0+1+2,320,240,1393,0,0,0.0,profiles_1741_1385_1393_splits_273_modes_0x3ff_directional_4x4_contextual_rdo_trellis_compatibility_and_determinism,PASS
+comparison,chroma_format_matrix,scalar+AVX2,1+4,0+1+2,320,240,0,0,0,0.0,formats_1_to_7_layout_matrix_21_of_21_exact_roundtrips_and_determinism,PASS
+comparison,reconstruction_aware_chroma,scalar+AVX2,1+4,2,320,240,1512,1037,1037,0.0,format_3_payload_compatibility_reconstruction_error_5226898_to_4458695_422_reconstruction_error_3631615_to_3328178_444_canonical_odd_edges_and_determinism,PASS
+comparison,joint_chroma_intra,scalar+AVX2,1+4,2,320,240,1474,1003,1003,0.0,payload_revision_6_stored_mode_slots_6000_joint_chroma_corruption_and_determinism,PASS
+comparison,calibrated_chroma_quant,scalar+AVX2,1+4,2,320,240,1583,1090,1090,0.0,calibrated_chroma_quality_55_header_byte27_corruption_all_layouts_and_determinism,PASS
+comparison,frame_segmentation,scalar+AVX2,1+4,2,320,240,1710,1193,1193,0.0,payload_revision_7_segments_300_frame_cluster_map_corruption_all_layouts_and_determinism,PASS
+comparison,adaptive_loop_filter,scalar+AVX2,1+4,2,320,240,1702,1191,1191,0.0,payload_revision_9_segment_filter_levels_2_1_1_0_dependencies_corruption_all_layouts_and_determinism,PASS
+comparison,calibrated_luma_quant,scalar+AVX2,1+4,2,320,240,1761,1225,1225,0.0,format_4_payload_compatibility_calibrated_luma_feature_dependencies_and_determinism,PASS
+comparison,variable_luma_transform,scalar+AVX2,1+4,2,320,240,1224,755,755,0.0,payload_revision_11_dct16_284_of_300_calibrated_luma_control_dependencies_counts_independent_switching_full_feature_composition_corruption_and_determinism,PASS
+comparison,perceptual_luma_trellis,scalar+AVX2,1+4,0+1+2,320,240,1199,757,757,0.0,perceptual_luma_trellis_opt_in_all_layouts_dependencies_and_determinism,PASS
+comparison,quant_adaptive_luma_filter,scalar+AVX2,1+4,0+1+2,320,240,1220,753,753,0.0,strengths_5_3_2_2_1_q60_exact_reconstruction_all_layouts_dependencies_and_determinism,PASS
+comparison,automatic_chroma,scalar+AVX2,1+4,3,320,240,2194,1617,1617,0.0,effort0_exact_420_auto_is_concrete_best_candidate_high_frequency_fixture_selects_444_and_determinism,PASS
+comparison,fidelity_tools,scalar+AVX2,1+4,2,320,240,1224,755,755,0.0,format_6_compatibility_dct32_0_combined_prediction_dependencies_matrix_hash_and_determinism,PASS
+comparison,adaptive_rich_context,scalar+AVX2,1+4,2,320,240,1891,1345,1345,0.0,format_7_format_6_compatibility_adaptive_rich_context_state_fallback_multiple_references_dependencies_and_determinism,PASS
+comparison,format_7_full_trellis,scalar+AVX2,1,2,320,240,2092,1524,1524,0.0,explicit_full_trellis_roundtrip_and_determinism,PASS
+comparison,format_7_spectral_luma,scalar+AVX2,1,2,320,240,2074,1486,1486,0.0,flagged_table_roundtrip_old_profile_isolated_dependencies_and_determinism,PASS
+comparison,format_7_refined_spectral_luma,scalar+AVX2,1,2,320,240,2076,1465,1465,0.0,refined_table_roundtrip_old_spectral_isolated_dependencies_and_determinism,PASS
+comparison,format_7_structural_luma,scalar+auto,1,2,33,35,0,0,0,0.0,24_odd_stride_chroma_effort_pairs_extreme_quality_dependencies,PASS
+comparison,format_7_balanced,scalar+auto,1,2,33,35,0,0,0,0.0,24_odd_stride_chroma_effort_pairs_extreme_quality_dependencies,PASS
+comparison,format_7_detail,scalar+auto,1,2,33,35,0,0,0,0.0,24_odd_stride_chroma_effort_pairs_extreme_quality_dependencies,PASS
+comparison,format_7_selective_luma_search,scalar+AVX2,1,2,317,241,33673,32632,32632,0.0,effort4_changes_odd_fixture_roundtrip_header_and_determinism,PASS
+comparison,directional_intra_odd_dimensions,scalar+auto,1+4,2,317,241,24735,0,0,0.0,split_467_partial_4x4_roundtrip_and_determinism,PASS
+comparison,chroma_format_matrix_odd,scalar+AVX2,1+4,0+1+2,317,241,0,0,0,0.0,formats_1_to_7_layout_matrix_21_of_21_exact_roundtrips_and_determinism,PASS
+comparison,reconstruction_aware_chroma_odd,scalar+AVX2,1+4,2,317,241,27493,26295,26295,0.0,format_3_payload_compatibility_reconstruction_error_619021315_to_546710228_422_reconstruction_error_483281486_to_431041873_444_canonical_odd_edges_and_determinism,PASS
+comparison,joint_chroma_intra_odd,scalar+AVX2,1+4,2,317,241,27383,26228,26228,0.0,payload_revision_6_stored_mode_slots_6240_joint_chroma_corruption_and_determinism,PASS
+comparison,calibrated_chroma_quant_odd,scalar+AVX2,1+4,2,317,241,28791,27601,27601,0.0,calibrated_chroma_quality_55_header_byte27_corruption_all_layouts_and_determinism,PASS
+comparison,frame_segmentation_odd,scalar+AVX2,1+4,2,317,241,28974,27774,27774,0.0,payload_revision_7_segments_320_frame_cluster_map_corruption_all_layouts_and_determinism,PASS
+comparison,adaptive_loop_filter_odd,scalar+AVX2,1+4,2,317,241,28956,27752,27752,0.0,payload_revision_9_segment_filter_levels_2_1_1_0_dependencies_corruption_all_layouts_and_determinism,PASS
+comparison,calibrated_luma_quant_odd,scalar+AVX2,1+4,2,317,241,28169,27043,27043,0.0,format_4_payload_compatibility_calibrated_luma_feature_dependencies_and_determinism,PASS
+comparison,variable_luma_transform_odd,scalar+AVX2,1+4,2,317,241,18583,17552,17552,0.0,payload_revision_11_dct16_133_of_320_calibrated_luma_control_dependencies_counts_independent_switching_full_feature_composition_corruption_and_determinism,PASS
+comparison,automatic_chroma_odd,scalar+AVX2,1+4,3,317,241,80852,79442,79442,0.0,effort0_exact_420_auto_is_concrete_best_candidate_high_frequency_fixture_selects_444_and_determinism,PASS
+cycle,odd_chroma0_t1,AVX2+FMA,1,0,317,241,48373,48177,48177,17.953896458128,roundtrip_exact,PASS
+cycle,odd_chroma0_t4,AVX2+FMA,1,0,317,241,48373,48177,48177,17.953896458128,roundtrip_exact,PASS
+comparison,odd_chroma0_t1_vs_t4,auto,1+4,0,317,241,48373,48177,48177,17.953896458128,byte_and_psnr_identical,PASS
+cycle,odd_chroma1_t1,AVX2+FMA,1,1,317,241,31929,31737,31737,14.835048310672,roundtrip_exact,PASS
+cycle,odd_chroma1_t4,AVX2+FMA,1,1,317,241,31929,31737,31737,14.835048310672,roundtrip_exact,PASS
+comparison,odd_chroma1_t1_vs_t4,auto,1+4,1,317,241,31929,31737,31737,14.835048310672,byte_and_psnr_identical,PASS
+cycle,odd_chroma2_t1,AVX2+FMA,1,2,317,241,25390,25207,25207,13.800568575044,roundtrip_exact,PASS
+cycle,odd_chroma2_t4,AVX2+FMA,1,2,317,241,25390,25207,25207,13.800568575044,roundtrip_exact,PASS
+comparison,odd_chroma2_t1_vs_t4,auto,1+4,2,317,241,25390,25207,25207,13.800568575044,byte_and_psnr_identical,PASS
+validation PASS (0 failures)
+
+$ cmake -S '/home/william-lima/Área de trabalho/n148' -B '/home/william-lima/Área de trabalho/n148/.build/release-validation/cmake' -DCMAKE_BUILD_TYPE=Release
+-- The C compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Configuring done (0.4s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/william-lima/Área de trabalho/n148/.build/release-validation/cmake
+
+$ cmake --build '/home/william-lima/Área de trabalho/n148/.build/release-validation/cmake' --parallel 2
+[  1%] Building C object CMakeFiles/n148i_static.dir/src/n148i.c.o
+[  3%] Building C object CMakeFiles/n148i_shared.dir/src/n148i.c.o
+[  5%] Building C object CMakeFiles/n148i_shared.dir/src/header.c.o
+[  6%] Building C object CMakeFiles/n148i_shared.dir/src/ppm.c.o
+[  8%] Building C object CMakeFiles/n148i_static.dir/src/header.c.o
+[ 10%] Building C object CMakeFiles/n148i_static.dir/src/ppm.c.o
+[ 12%] Building C object CMakeFiles/n148i_shared.dir/src/tables.c.o
+[ 13%] Building C object CMakeFiles/n148i_shared.dir/src/dct.c.o
+[ 15%] Building C object CMakeFiles/n148i_shared.dir/src/cpu.c.o
+[ 17%] Building C object CMakeFiles/n148i_static.dir/src/tables.c.o
+[ 18%] Building C object CMakeFiles/n148i_shared.dir/src/parallel.c.o
+[ 20%] Building C object CMakeFiles/n148i_static.dir/src/dct.c.o
+[ 22%] Building C object CMakeFiles/n148i_shared.dir/src/huffman.c.o
+[ 24%] Building C object CMakeFiles/n148i_shared.dir/src/rans.c.o
+[ 25%] Building C object CMakeFiles/n148i_shared.dir/src/intra.c.o
+[ 27%] Building C object CMakeFiles/n148i_static.dir/src/cpu.c.o
+[ 29%] Building C object CMakeFiles/n148i_static.dir/src/parallel.c.o
+[ 31%] Building C object CMakeFiles/n148i_static.dir/src/huffman.c.o
+[ 32%] Building C object CMakeFiles/n148i_static.dir/src/rans.c.o
+[ 34%] Building C object CMakeFiles/n148i_static.dir/src/intra.c.o
+[ 36%] Building C object CMakeFiles/n148i_shared.dir/src/perceptual.c.o
+[ 37%] Building C object CMakeFiles/n148i_shared.dir/src/adaptive_quant.c.o
+[ 39%] Building C object CMakeFiles/n148i_shared.dir/src/segmentation.c.o
+[ 41%] Building C object CMakeFiles/n148i_shared.dir/src/variable_transform.c.o
+[ 43%] Building C object CMakeFiles/n148i_static.dir/src/perceptual.c.o
+[ 44%] Building C object CMakeFiles/n148i_static.dir/src/adaptive_quant.c.o
+[ 46%] Building C object CMakeFiles/n148i_static.dir/src/segmentation.c.o
+[ 48%] Building C object CMakeFiles/n148i_shared.dir/src/rdo.c.o
+[ 50%] Building C object CMakeFiles/n148i_shared.dir/src/loop_filter.c.o
+[ 51%] Building C object CMakeFiles/n148i_shared.dir/src/directional_intra.c.o
+[ 53%] Building C object CMakeFiles/n148i_static.dir/src/variable_transform.c.o
+[ 55%] Building C object CMakeFiles/n148i_static.dir/src/rdo.c.o
+[ 56%] Building C object CMakeFiles/n148i_static.dir/src/loop_filter.c.o
+[ 58%] Building C object CMakeFiles/n148i_static.dir/src/directional_intra.c.o
+[ 60%] Building C object CMakeFiles/n148i_static.dir/src/entropy_payload.c.o
+[ 62%] Building C object CMakeFiles/n148i_shared.dir/src/entropy_payload.c.o
+[ 63%] Building C object CMakeFiles/n148i_shared.dir/src/chroma_profile.c.o
+[ 65%] Building C object CMakeFiles/n148i_shared.dir/src/luma_profile.c.o
+[ 67%] Building C object CMakeFiles/n148i_shared.dir/src/fidelity_profile.c.o
+[ 68%] Building C object CMakeFiles/n148i_shared.dir/src/entropy_profile.c.o
+[ 70%] Building C object CMakeFiles/n148i_static.dir/src/chroma_profile.c.o
+[ 72%] Building C object CMakeFiles/n148i_static.dir/src/luma_profile.c.o
+[ 74%] Building C object CMakeFiles/n148i_static.dir/src/fidelity_profile.c.o
+[ 75%] Building C object CMakeFiles/n148i_static.dir/src/entropy_profile.c.o
+[ 77%] Building C object CMakeFiles/n148i_shared.dir/src/encoder.c.o
+[ 79%] Building C object CMakeFiles/n148i_static.dir/src/encoder.c.o
+[ 81%] Building C object CMakeFiles/n148i_shared.dir/src/decoder.c.o
+[ 82%] Building C object CMakeFiles/n148i_static.dir/src/decoder.c.o
+[ 84%] Linking C shared library shared/libn148i.so
+[ 84%] Built target n148i_shared
+[ 86%] Building C object CMakeFiles/n148i_shared_roundtrip.dir/examples/memory_roundtrip.c.o
+[ 87%] Linking C executable n148i_shared_roundtrip
+[ 87%] Built target n148i_shared_roundtrip
+[ 89%] Linking C static library static/libn148i.a
+[ 89%] Built target n148i_static
+[ 93%] Building C object CMakeFiles/n148i_memory_roundtrip.dir/examples/memory_roundtrip.c.o
+[ 93%] Building C object CMakeFiles/n148i_cli.dir/src/main.c.o
+[ 94%] Linking C executable n148i_memory_roundtrip
+[ 94%] Built target n148i_memory_roundtrip
+[ 96%] Building C object CMakeFiles/n148i_validate.dir/src/validate_cli.c.o
+[ 98%] Linking C executable n148i
+[ 98%] Built target n148i_cli
+[100%] Linking C executable validate
+[100%] Built target n148i_validate
+
+$ ctest --test-dir '/home/william-lima/Área de trabalho/n148/.build/release-validation/cmake' --output-on-failure
+Internal ctest changing into directory: /home/william-lima/Área de trabalho/n148/.build/release-validation/cmake
+Test project /home/william-lima/Área de trabalho/n148/.build/release-validation/cmake
+    Start 1: n148i.memory_roundtrip
+1/3 Test #1: n148i.memory_roundtrip ...........   Passed    0.01 sec
+    Start 2: n148i.shared_roundtrip
+2/3 Test #2: n148i.shared_roundtrip ...........   Passed    0.01 sec
+    Start 3: n148i.validation
+3/3 Test #3: n148i.validation .................   Passed   28.53 sec
+
+100% tests passed, 0 tests failed out of 3
+
+Total Test time (real) =  28.55 sec
+
+$ cmake -S '/home/william-lima/Área de trabalho/n148' -B '/home/william-lima/Área de trabalho/n148/.build/release-validation/sanitizers' -DCMAKE_BUILD_TYPE=RelWithDebInfo '-DCMAKE_C_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer' '-DCMAKE_EXE_LINKER_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer' '-DCMAKE_SHARED_LINKER_FLAGS=-fsanitize=address,undefined -fno-omit-frame-pointer'
+-- The C compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Configuring done (0.6s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/william-lima/Área de trabalho/n148/.build/release-validation/sanitizers
+
+$ cmake --build '/home/william-lima/Área de trabalho/n148/.build/release-validation/sanitizers' --parallel 2
+[  3%] Building C object CMakeFiles/n148i_shared.dir/src/n148i.c.o
+[  3%] Building C object CMakeFiles/n148i_static.dir/src/n148i.c.o
+[  5%] Building C object CMakeFiles/n148i_static.dir/src/header.c.o
+[  6%] Building C object CMakeFiles/n148i_static.dir/src/ppm.c.o
+[  8%] Building C object CMakeFiles/n148i_shared.dir/src/header.c.o
+[ 10%] Building C object CMakeFiles/n148i_shared.dir/src/ppm.c.o
+[ 12%] Building C object CMakeFiles/n148i_static.dir/src/tables.c.o
+[ 13%] Building C object CMakeFiles/n148i_static.dir/src/dct.c.o
+[ 15%] Building C object CMakeFiles/n148i_shared.dir/src/tables.c.o
+[ 17%] Building C object CMakeFiles/n148i_shared.dir/src/dct.c.o
+[ 18%] Building C object CMakeFiles/n148i_static.dir/src/cpu.c.o
+[ 20%] Building C object CMakeFiles/n148i_static.dir/src/parallel.c.o
+[ 22%] Building C object CMakeFiles/n148i_static.dir/src/huffman.c.o
+[ 24%] Building C object CMakeFiles/n148i_static.dir/src/rans.c.o
+[ 25%] Building C object CMakeFiles/n148i_shared.dir/src/cpu.c.o
+[ 27%] Building C object CMakeFiles/n148i_shared.dir/src/parallel.c.o
+[ 29%] Building C object CMakeFiles/n148i_shared.dir/src/huffman.c.o
+[ 31%] Building C object CMakeFiles/n148i_static.dir/src/intra.c.o
+[ 32%] Building C object CMakeFiles/n148i_shared.dir/src/rans.c.o
+[ 34%] Building C object CMakeFiles/n148i_shared.dir/src/intra.c.o
+[ 36%] Building C object CMakeFiles/n148i_static.dir/src/perceptual.c.o
+[ 37%] Building C object CMakeFiles/n148i_static.dir/src/adaptive_quant.c.o
+[ 39%] Building C object CMakeFiles/n148i_shared.dir/src/perceptual.c.o
+[ 41%] Building C object CMakeFiles/n148i_static.dir/src/segmentation.c.o
+[ 43%] Building C object CMakeFiles/n148i_shared.dir/src/adaptive_quant.c.o
+[ 44%] Building C object CMakeFiles/n148i_shared.dir/src/segmentation.c.o
+[ 46%] Building C object CMakeFiles/n148i_static.dir/src/variable_transform.c.o
+[ 48%] Building C object CMakeFiles/n148i_shared.dir/src/variable_transform.c.o
+[ 50%] Building C object CMakeFiles/n148i_static.dir/src/rdo.c.o
+[ 51%] Building C object CMakeFiles/n148i_shared.dir/src/rdo.c.o
+[ 53%] Building C object CMakeFiles/n148i_static.dir/src/loop_filter.c.o
+[ 55%] Building C object CMakeFiles/n148i_shared.dir/src/loop_filter.c.o
+[ 56%] Building C object CMakeFiles/n148i_static.dir/src/directional_intra.c.o
+[ 58%] Building C object CMakeFiles/n148i_shared.dir/src/directional_intra.c.o
+[ 60%] Building C object CMakeFiles/n148i_static.dir/src/entropy_payload.c.o
+[ 62%] Building C object CMakeFiles/n148i_shared.dir/src/entropy_payload.c.o
+[ 63%] Building C object CMakeFiles/n148i_shared.dir/src/chroma_profile.c.o
+[ 65%] Building C object CMakeFiles/n148i_shared.dir/src/luma_profile.c.o
+[ 67%] Building C object CMakeFiles/n148i_shared.dir/src/fidelity_profile.c.o
+[ 68%] Building C object CMakeFiles/n148i_static.dir/src/chroma_profile.c.o
+[ 70%] Building C object CMakeFiles/n148i_shared.dir/src/entropy_profile.c.o
+[ 72%] Building C object CMakeFiles/n148i_static.dir/src/luma_profile.c.o
+[ 74%] Building C object CMakeFiles/n148i_static.dir/src/fidelity_profile.c.o
+[ 75%] Building C object CMakeFiles/n148i_static.dir/src/entropy_profile.c.o
+[ 77%] Building C object CMakeFiles/n148i_static.dir/src/encoder.c.o
+[ 79%] Building C object CMakeFiles/n148i_shared.dir/src/encoder.c.o
+[ 81%] Building C object CMakeFiles/n148i_shared.dir/src/decoder.c.o
+[ 82%] Building C object CMakeFiles/n148i_static.dir/src/decoder.c.o
+[ 84%] Linking C shared library shared/libn148i.so
+[ 86%] Linking C static library static/libn148i.a
+[ 86%] Built target n148i_shared
+[ 87%] Building C object CMakeFiles/n148i_shared_roundtrip.dir/examples/memory_roundtrip.c.o
+[ 87%] Built target n148i_static
+[ 89%] Building C object CMakeFiles/n148i_cli.dir/src/main.c.o
+[ 91%] Linking C executable n148i_shared_roundtrip
+[ 91%] Built target n148i_shared_roundtrip
+[ 93%] Building C object CMakeFiles/n148i_memory_roundtrip.dir/examples/memory_roundtrip.c.o
+[ 94%] Linking C executable n148i_memory_roundtrip
+[ 96%] Linking C executable n148i
+[ 96%] Built target n148i_memory_roundtrip
+[ 96%] Built target n148i_cli
+[ 98%] Building C object CMakeFiles/n148i_validate.dir/src/validate_cli.c.o
+[100%] Linking C executable validate
+[100%] Built target n148i_validate
+
+$ '/home/william-lima/Área de trabalho/n148/.build/release-validation/sanitizers/validate'
+kind,name,cpu,threads,chroma,width,height,file_bytes,payload_bytes,bytes_consumed,psnr_db,detail,result
+comparison,rans_core,scalar,1,0,0,0,1161,8192,8192,0.0,normalized_roundtrip,PASS
+comparison,rans_adaptive_state,scalar,1,0,0,0,2352,6144,6144,0.0,three_plane_integer_model_state_match,PASS
+cycle,example_scalar,scalar,1,2,320,240,2290,2145,2145,34.696364629236,roundtrip_exact,PASS
+cycle,example_avx2,AVX2,1,2,320,240,2290,2145,2145,34.696364629236,roundtrip_exact,PASS
+comparison,scalar_vs_avx2,scalar+AVX2,1,2,320,240,2290,2145,2145,34.696364629236,byte_and_psnr_identical,PASS
+comparison,public_api_vs_internal,scalar,1,2,320,240,2290,2145,2145,34.696364629236,memory_stride_and_bitstream_identical,PASS
+comparison,rans_vs_format_1_coefficients,scalar+AVX2,1+4,2,320,240,2251,2145,2145,34.696364629236,coefficients_pixels_determinism_and_v1_decode,PASS
+comparison,context_model_trace,scalar+AVX2,1+4,2,320,240,2236,1853,1853,34.696364629236,encoder_decoder_model_hash_and_coefficients,PASS
+comparison,reconstructed_intra_prediction,scalar+AVX2,1+4,2,320,240,1594,1151,1151,0.0,modes_379_49_255_1117_coefficients_and_uniform_drift,PASS
+comparison,perceptual_color_transform,scalar,1,0,16,16,0,0,0,46.242195944944,max_channel_error_14_at_0_221_255_to_14_221_255_over_4096_rgb_samples,PASS
+comparison,perceptual_color,scalar+AVX2,1+4,0+1+2,320,240,2005,1556,1556,0.0,all_feature_combinations_rgb_roundtrip_and_determinism,PASS
+comparison,adaptive_quantization,scalar+AVX2,1+4,0+1+2,320,240,1747,0,0,0.0,levels_859_43_1_1_map_coefficients_corruption_and_perceptual_combination_determinism,PASS
+comparison,variable_transform,scalar+AVX2,1+4,2,320,240,1617,0,0,0.0,strategies_0_417_43_q14_hash_b17cb6d69247a7e9_forced_sizes_edge_count_and_combination_rejection,PASS
+comparison,rate_distortion_optimization,scalar+AVX2,1+4,2,320,240,1567,1586,1586,0.0,effort0_1594_effort5_1567_effort9_1586_changed_3_trellis_modes_dependencies_and_combination_determinism,PASS
+comparison,causal_loop_filter,scalar+AVX2,1+4,2,320,240,1412,1037,1037,0.0,base_1477_filter_1412_changed_213916_deblock_8_dering_1_causal_reference_dependencies_and_combination_determinism,PASS
+comparison,directional_intra,scalar+AVX2,1+4,0+1+2,320,240,1393,0,0,0.0,profiles_1741_1385_1393_splits_273_modes_0x3ff_directional_4x4_contextual_rdo_trellis_compatibility_and_determinism,PASS
+comparison,chroma_format_matrix,scalar+AVX2,1+4,0+1+2,320,240,0,0,0,0.0,formats_1_to_7_layout_matrix_21_of_21_exact_roundtrips_and_determinism,PASS
+comparison,reconstruction_aware_chroma,scalar+AVX2,1+4,2,320,240,1512,1037,1037,0.0,format_3_payload_compatibility_reconstruction_error_5226898_to_4458695_422_reconstruction_error_3631615_to_3328178_444_canonical_odd_edges_and_determinism,PASS
+comparison,joint_chroma_intra,scalar+AVX2,1+4,2,320,240,1474,1003,1003,0.0,payload_revision_6_stored_mode_slots_6000_joint_chroma_corruption_and_determinism,PASS
+comparison,calibrated_chroma_quant,scalar+AVX2,1+4,2,320,240,1583,1090,1090,0.0,calibrated_chroma_quality_55_header_byte27_corruption_all_layouts_and_determinism,PASS
+comparison,frame_segmentation,scalar+AVX2,1+4,2,320,240,1710,1193,1193,0.0,payload_revision_7_segments_300_frame_cluster_map_corruption_all_layouts_and_determinism,PASS
+comparison,adaptive_loop_filter,scalar+AVX2,1+4,2,320,240,1702,1191,1191,0.0,payload_revision_9_segment_filter_levels_2_1_1_0_dependencies_corruption_all_layouts_and_determinism,PASS
+comparison,calibrated_luma_quant,scalar+AVX2,1+4,2,320,240,1761,1225,1225,0.0,format_4_payload_compatibility_calibrated_luma_feature_dependencies_and_determinism,PASS
+comparison,variable_luma_transform,scalar+AVX2,1+4,2,320,240,1224,755,755,0.0,payload_revision_11_dct16_284_of_300_calibrated_luma_control_dependencies_counts_independent_switching_full_feature_composition_corruption_and_determinism,PASS
+comparison,perceptual_luma_trellis,scalar+AVX2,1+4,0+1+2,320,240,1199,757,757,0.0,perceptual_luma_trellis_opt_in_all_layouts_dependencies_and_determinism,PASS
+comparison,quant_adaptive_luma_filter,scalar+AVX2,1+4,0+1+2,320,240,1220,753,753,0.0,strengths_5_3_2_2_1_q60_exact_reconstruction_all_layouts_dependencies_and_determinism,PASS
+comparison,automatic_chroma,scalar+AVX2,1+4,3,320,240,2194,1617,1617,0.0,effort0_exact_420_auto_is_concrete_best_candidate_high_frequency_fixture_selects_444_and_determinism,PASS
+comparison,fidelity_tools,scalar+AVX2,1+4,2,320,240,1224,755,755,0.0,format_6_compatibility_dct32_0_combined_prediction_dependencies_matrix_hash_and_determinism,PASS
+comparison,adaptive_rich_context,scalar+AVX2,1+4,2,320,240,1891,1345,1345,0.0,format_7_format_6_compatibility_adaptive_rich_context_state_fallback_multiple_references_dependencies_and_determinism,PASS
+comparison,format_7_full_trellis,scalar+AVX2,1,2,320,240,2092,1524,1524,0.0,explicit_full_trellis_roundtrip_and_determinism,PASS
+comparison,format_7_spectral_luma,scalar+AVX2,1,2,320,240,2074,1486,1486,0.0,flagged_table_roundtrip_old_profile_isolated_dependencies_and_determinism,PASS
+comparison,format_7_refined_spectral_luma,scalar+AVX2,1,2,320,240,2076,1465,1465,0.0,refined_table_roundtrip_old_spectral_isolated_dependencies_and_determinism,PASS
+comparison,format_7_structural_luma,scalar+auto,1,2,33,35,0,0,0,0.0,24_odd_stride_chroma_effort_pairs_extreme_quality_dependencies,PASS
+comparison,format_7_balanced,scalar+auto,1,2,33,35,0,0,0,0.0,24_odd_stride_chroma_effort_pairs_extreme_quality_dependencies,PASS
+comparison,format_7_detail,scalar+auto,1,2,33,35,0,0,0,0.0,24_odd_stride_chroma_effort_pairs_extreme_quality_dependencies,PASS
+comparison,format_7_selective_luma_search,scalar+AVX2,1,2,317,241,33673,32632,32632,0.0,effort4_changes_odd_fixture_roundtrip_header_and_determinism,PASS
+comparison,directional_intra_odd_dimensions,scalar+auto,1+4,2,317,241,24735,0,0,0.0,split_467_partial_4x4_roundtrip_and_determinism,PASS
+comparison,chroma_format_matrix_odd,scalar+AVX2,1+4,0+1+2,317,241,0,0,0,0.0,formats_1_to_7_layout_matrix_21_of_21_exact_roundtrips_and_determinism,PASS
+comparison,reconstruction_aware_chroma_odd,scalar+AVX2,1+4,2,317,241,27493,26295,26295,0.0,format_3_payload_compatibility_reconstruction_error_619021315_to_546710228_422_reconstruction_error_483281486_to_431041873_444_canonical_odd_edges_and_determinism,PASS
+comparison,joint_chroma_intra_odd,scalar+AVX2,1+4,2,317,241,27383,26228,26228,0.0,payload_revision_6_stored_mode_slots_6240_joint_chroma_corruption_and_determinism,PASS
+comparison,calibrated_chroma_quant_odd,scalar+AVX2,1+4,2,317,241,28791,27601,27601,0.0,calibrated_chroma_quality_55_header_byte27_corruption_all_layouts_and_determinism,PASS
+comparison,frame_segmentation_odd,scalar+AVX2,1+4,2,317,241,28974,27774,27774,0.0,payload_revision_7_segments_320_frame_cluster_map_corruption_all_layouts_and_determinism,PASS
+comparison,adaptive_loop_filter_odd,scalar+AVX2,1+4,2,317,241,28956,27752,27752,0.0,payload_revision_9_segment_filter_levels_2_1_1_0_dependencies_corruption_all_layouts_and_determinism,PASS
+comparison,calibrated_luma_quant_odd,scalar+AVX2,1+4,2,317,241,28169,27043,27043,0.0,format_4_payload_compatibility_calibrated_luma_feature_dependencies_and_determinism,PASS
+comparison,variable_luma_transform_odd,scalar+AVX2,1+4,2,317,241,18583,17552,17552,0.0,payload_revision_11_dct16_133_of_320_calibrated_luma_control_dependencies_counts_independent_switching_full_feature_composition_corruption_and_determinism,PASS
+comparison,automatic_chroma_odd,scalar+AVX2,1+4,3,317,241,80852,79442,79442,0.0,effort0_exact_420_auto_is_concrete_best_candidate_high_frequency_fixture_selects_444_and_determinism,PASS
+cycle,odd_chroma0_t1,AVX2+FMA,1,0,317,241,48373,48177,48177,17.953896458128,roundtrip_exact,PASS
+cycle,odd_chroma0_t4,AVX2+FMA,4,0,317,241,48373,48177,48177,17.953896458128,roundtrip_exact,PASS
+comparison,odd_chroma0_t1_vs_t4,auto,1+4,0,317,241,48373,48177,48177,17.953896458128,byte_and_psnr_identical,PASS
+cycle,odd_chroma1_t1,AVX2+FMA,1,1,317,241,31929,31737,31737,14.835048310672,roundtrip_exact,PASS
+cycle,odd_chroma1_t4,AVX2+FMA,4,1,317,241,31929,31737,31737,14.835048310672,roundtrip_exact,PASS
+comparison,odd_chroma1_t1_vs_t4,auto,1+4,1,317,241,31929,31737,31737,14.835048310672,byte_and_psnr_identical,PASS
+cycle,odd_chroma2_t1,AVX2+FMA,1,2,317,241,25390,25207,25207,13.800568575044,roundtrip_exact,PASS
+cycle,odd_chroma2_t4,AVX2+FMA,4,2,317,241,25390,25207,25207,13.800568575044,roundtrip_exact,PASS
+comparison,odd_chroma2_t1_vs_t4,auto,1+4,2,317,241,25390,25207,25207,13.800568575044,byte_and_psnr_identical,PASS
+validation PASS (0 failures)
+
+$ make -j2 -B compare validate libraries
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/n148i.c -o .build/make/release/n148i.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/header.c -o .build/make/release/header.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/ppm.c -o .build/make/release/ppm.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/tables.c -o .build/make/release/tables.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/dct.c -o .build/make/release/dct.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/cpu.c -o .build/make/release/cpu.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/parallel.c -o .build/make/release/parallel.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/huffman.c -o .build/make/release/huffman.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/rans.c -o .build/make/release/rans.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/intra.c -o .build/make/release/intra.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/perceptual.c -o .build/make/release/perceptual.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/adaptive_quant.c -o .build/make/release/adaptive_quant.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/segmentation.c -o .build/make/release/segmentation.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/variable_transform.c -o .build/make/release/variable_transform.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/rdo.c -o .build/make/release/rdo.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/loop_filter.c -o .build/make/release/loop_filter.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/entropy_payload.c -o .build/make/release/entropy_payload.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/directional_intra.c -o .build/make/release/directional_intra.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/chroma_profile.c -o .build/make/release/chroma_profile.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/luma_profile.c -o .build/make/release/luma_profile.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/fidelity_profile.c -o .build/make/release/fidelity_profile.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/entropy_profile.c -o .build/make/release/entropy_profile.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/encoder.c -o .build/make/release/encoder.o
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -fPIC -fvisibility=hidden -MMD -MP -c src/decoder.c -o .build/make/release/decoder.o
+ar rcs libn148i.a .build/make/release/n148i.o .build/make/release/header.o .build/make/release/ppm.o .build/make/release/tables.o .build/make/release/dct.o .build/make/release/cpu.o .build/make/release/parallel.o .build/make/release/huffman.o .build/make/release/rans.o .build/make/release/intra.o .build/make/release/perceptual.o .build/make/release/adaptive_quant.o .build/make/release/segmentation.o .build/make/release/variable_transform.o .build/make/release/rdo.o .build/make/release/loop_filter.o .build/make/release/entropy_payload.o .build/make/release/directional_intra.o .build/make/release/chroma_profile.o .build/make/release/luma_profile.o .build/make/release/fidelity_profile.o .build/make/release/entropy_profile.o .build/make/release/encoder.o .build/make/release/decoder.o
+cc -shared -Wl,-soname,libn148i.so.2 \
+	-Wl,--version-script=cmake/n148i.map .build/make/release/n148i.o .build/make/release/header.o .build/make/release/ppm.o .build/make/release/tables.o .build/make/release/dct.o .build/make/release/cpu.o .build/make/release/parallel.o .build/make/release/huffman.o .build/make/release/rans.o .build/make/release/intra.o .build/make/release/perceptual.o .build/make/release/adaptive_quant.o .build/make/release/segmentation.o .build/make/release/variable_transform.o .build/make/release/rdo.o .build/make/release/loop_filter.o .build/make/release/entropy_payload.o .build/make/release/directional_intra.o .build/make/release/chroma_profile.o .build/make/release/luma_profile.o .build/make/release/fidelity_profile.o .build/make/release/entropy_profile.o .build/make/release/encoder.o .build/make/release/decoder.o \
+	-o libn148i.so.2.0.0 -pthread -lm
+ranlib libn148i.a
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -DN148I_STATIC_DEFINE src/compare_cli.c \
+	libn148i.a -o compare -pthread -lm -ljpeg
+cc -Iinclude -Isrc -O3 -Wall -Wextra -Wno-unused-parameter -pthread -DN148I_STATIC_DEFINE src/validate_cli.c \
+	libn148i.a -o validate -pthread -lm
+ln -sf libn148i.so.2.0.0 libn148i.so.2
+ln -sf libn148i.so.2 libn148i.so
+
+$ nm -D --defined-only '/home/william-lima/Área de trabalho/n148/libn148i.so.2.0.0'
+0000000000000000 A N148I_2.0
+0000000000003410 T n148i_decode_memory@@N148I_2.0
+00000000000039f0 T n148i_encode_memory@@N148I_2.0
+00000000000033c0 T n148i_encode_options_init@@N148I_2.0
+0000000000004850 T n148i_format_version@@N148I_2.0
+00000000000039a0 T n148i_free_buffer@@N148I_2.0
+00000000000039b0 T n148i_free_image@@N148I_2.0
+0000000000004840 T n148i_library_version@@N148I_2.0
+00000000000038e0 T n148i_read_header@@N148I_2.0
+0000000000004760 T n148i_result_string@@N148I_2.0
+00000000000048e0 T n148i_simd_force@@N148I_2.0
+0000000000004860 T n148i_simd_level@@N148I_2.0
+0000000000004870 T n148i_simd_name@@N148I_2.0
+
+$ readelf -d '/home/william-lima/Área de trabalho/n148/libn148i.so.2.0.0'
+
+Dynamic section at offset 0x8edc8 contains 28 entries:
+  Tag        Type                         Name/Value
+ 0x0000000000000001 (NEEDED)             Shared library: [libm.so.6]
+ 0x0000000000000001 (NEEDED)             Shared library: [libc.so.6]
+ 0x000000000000000e (SONAME)             Library soname: [libn148i.so.2]
+ 0x000000000000000c (INIT)               0x2000
+ 0x000000000000000d (FINI)               0x82e94
+ 0x0000000000000019 (INIT_ARRAY)         0x8fdb8
+ 0x000000000000001b (INIT_ARRAYSZ)       8 (bytes)
+ 0x000000000000001a (FINI_ARRAY)         0x8fdc0
+ 0x000000000000001c (FINI_ARRAYSZ)       8 (bytes)
+ 0x000000006ffffef5 (GNU_HASH)           0x2f0
+ 0x0000000000000005 (STRTAB)             0x8a8
+ 0x0000000000000006 (SYMTAB)             0x350
+ 0x000000000000000a (STRSZ)              819 (bytes)
+ 0x000000000000000b (SYMENT)             24 (bytes)
+ 0x0000000000000003 (PLTGOT)             0x8ffe8
+ 0x0000000000000002 (PLTRELSZ)           1008 (bytes)
+ 0x0000000000000014 (PLTREL)             RELA
+ 0x0000000000000017 (JMPREL)             0xdd0
+ 0x0000000000000007 (RELA)               0xd28
+ 0x0000000000000008 (RELASZ)             168 (bytes)
+ 0x0000000000000009 (RELAENT)            24 (bytes)
+ 0x000000006ffffffc (VERDEF)             0xc50
+ 0x000000006ffffffd (VERDEFNUM)          2
+ 0x000000006ffffffe (VERNEED)            0xc88
+ 0x000000006fffffff (VERNEEDNUM)         2
+ 0x000000006ffffff0 (VERSYM)             0xbdc
+ 0x000000006ffffff9 (RELACOUNT)          3
+ 0x0000000000000000 (NULL)               0x0
+
+$ readelf --version-info '/home/william-lima/Área de trabalho/n148/libn148i.so.2.0.0'
+
+Version symbols section '.gnu.version' contains 57 entries:
+ Addr: 0x0000000000000bdc  Offset: 0x00000bdc  Link: 4 (.dynsym)
+  000:   0 (*local*)       3 (GLIBC_2.2.5)   4 (GLIBC_2.2.5)   5 (GLIBC_2.29)
+  004:   1 (*global*)      6 (GLIBC_2.3.2)   4 (GLIBC_2.2.5)   4 (GLIBC_2.2.5)
+  008:   4 (GLIBC_2.2.5)   4 (GLIBC_2.2.5)   6 (GLIBC_2.3.2)   4 (GLIBC_2.2.5)
+  00c:   7 (GLIBC_2.4)     3 (GLIBC_2.2.5)   4 (GLIBC_2.2.5)   4 (GLIBC_2.2.5)
+  010:   5 (GLIBC_2.29)    3 (GLIBC_2.2.5)   4 (GLIBC_2.2.5)   4 (GLIBC_2.2.5)
+  014:   6 (GLIBC_2.3.2)   4 (GLIBC_2.2.5)   8 (GLIBC_2.3.4)   8 (GLIBC_2.3.4)
+  018:   1 (*global*)      9 (GLIBC_2.14)    4 (GLIBC_2.2.5)   4 (GLIBC_2.2.5)
+  01c:   4 (GLIBC_2.2.5)   4 (GLIBC_2.2.5)   8 (GLIBC_2.3.4)   a (GLIBC_2.34)
+  020:   4 (GLIBC_2.2.5)   4 (GLIBC_2.2.5)   4 (GLIBC_2.2.5)   8 (GLIBC_2.3.4)
+  024:   4 (GLIBC_2.2.5)   8 (GLIBC_2.3.4)   1 (*global*)      3 (GLIBC_2.2.5)
+  028:   a (GLIBC_2.34)    4 (GLIBC_2.2.5)   4 (GLIBC_2.2.5)   5 (GLIBC_2.29)
+  02c:   2 (N148I_2.0)     2 (N148I_2.0)     2 (N148I_2.0)     2 (N148I_2.0)
+  030:   2 (N148I_2.0)     2 (N148I_2.0)     2 (N148I_2.0)     2 (N148I_2.0)
+  034:   2 (N148I_2.0)     2 (N148I_2.0)     2 (N148I_2.0)     2 (N148I_2.0)
+  038:   2 (N148I_2.0)
+
+Version definition section '.gnu.version_d' contains 2 entries:
+ Addr: 0x0000000000000c50  Offset: 0x00000c50  Link: 5 (.dynstr)
+  000000: Rev: 1  Flags: BASE  Index: 1  Cnt: 1  Name: libn148i.so.2
+  0x001c: Rev: 1  Flags: none  Index: 2  Cnt: 1  Name: N148I_2.0
+
+Version needs section '.gnu.version_r' contains 2 entries:
+ Addr: 0x0000000000000c88  Offset: 0x00000c88  Link: 5 (.dynstr)
+  000000: Version: 1  File: libc.so.6  Cnt: 6
+  0x0010:   Name: GLIBC_2.34  Flags: none  Version: 10
+  0x0020:   Name: GLIBC_2.14  Flags: none  Version: 9
+  0x0030:   Name: GLIBC_2.3.4  Flags: none  Version: 8
+  0x0040:   Name: GLIBC_2.4  Flags: none  Version: 7
+  0x0050:   Name: GLIBC_2.3.2  Flags: none  Version: 6
+  0x0060:   Name: GLIBC_2.2.5  Flags: none  Version: 4
+  0x0070: Version: 1  File: libm.so.6  Cnt: 2
+  0x0080:   Name: GLIBC_2.29  Flags: none  Version: 5
+  0x0090:   Name: GLIBC_2.2.5  Flags: none  Version: 3
+
+$ cmake --install '/home/william-lima/Área de trabalho/n148/.build/release-validation/cmake' --prefix '/home/william-lima/Área de trabalho/n148/.build/release-validation/install'
+-- Install configuration: "Release"
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/lib/libn148i.so.2.0.0
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/lib/libn148i.so.2
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/lib/libn148i.so
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/lib/static/libn148i.a
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/include/n148i.h
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/./LICENSE
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/./README.txt
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/lib/pkgconfig/n148i.pc
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/lib/cmake/n148i/n148iConfig.cmake
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/lib/cmake/n148i/n148iConfigVersion.cmake
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/lib/cmake/n148i/n148iTargets.cmake
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/lib/cmake/n148i/n148iTargets-release.cmake
+-- Installing: /home/william-lima/Área de trabalho/n148/.build/release-validation/install/bin/n148i
+
+$ pkg-config --cflags --libs n148i
+-I/tmp/n148-release-prefix-vechahll/install/lib/pkgconfig/../../include -L/tmp/n148-release-prefix-vechahll/install/lib/pkgconfig/../../lib -ln148i
+
+$ cc '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/consumer.c' -I/tmp/n148-release-prefix-vechahll/install/lib/pkgconfig/../../include -L/tmp/n148-release-prefix-vechahll/install/lib/pkgconfig/../../lib -ln148i -o '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/consumer-pkg-config'
+
+$ '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/consumer-pkg-config'
+V2 format=7 bytes=355
+
+$ cmake -S '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/cmake' -B '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/cmake-build' -DCMAKE_PREFIX_PATH=/tmp/n148-release-prefix-vechahll/install
+-- The C compiler identification is GNU 13.3.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /usr/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+-- Found Threads: TRUE
+-- Configuring done (0.4s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/cmake-build
+
+$ cmake --build '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/cmake-build' --parallel 2
+[ 50%] Building C object CMakeFiles/consumer.dir/consumer.c.o
+[100%] Linking C executable consumer
+[100%] Built target consumer
+
+$ '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/cmake-build/consumer'
+V2 format=7 bytes=355
+
+$ cc -DN148I_STATIC_DEFINE -I/tmp/n148-release-prefix-vechahll/install/include '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/consumer.c' /tmp/n148-release-prefix-vechahll/install/lib/static/libn148i.a -pthread -lm -o '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/consumer-static'
+
+$ '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/consumer-static'
+V2 format=7 bytes=355
+
+$ cc -std=c11 -Wall -Wextra -Werror -I/tmp/n148-release-prefix-vechahll/install/include '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/feature-values.c' -o '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/feature-values'
+
+$ c++ -std=c++17 -Wall -Wextra -Werror -I/tmp/n148-release-prefix-vechahll/install/include -c '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/header.cpp' -o '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/header.o'
+
+$ cc '/home/william-lima/Área de trabalho/n148/examples/memory_roundtrip.c' -I/tmp/n148-release-prefix-vechahll/install/lib/pkgconfig/../../include -L/tmp/n148-release-prefix-vechahll/install/lib/pkgconfig/../../lib -ln148i -o '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/readme-example'
+
+$ '/home/william-lima/Área de trabalho/n148/.build/release-validation/consumers/readme-example'
+N.148i V2 encoded 64x48 RGB into 565 bytes; decoded 64x48
+

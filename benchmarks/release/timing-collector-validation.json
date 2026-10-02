@@ -1,0 +1,16 @@
+{
+  "utc": "2026-10-01T21:05:59.334197+00:00",
+  "passed": true,
+  "tests": [
+    "test_before_or_after_noise_repeats_every_codec",
+    "test_waits_before_start_and_rejects_noise_at_group_end"
+  ],
+  "result": "2 tests passed; both before/after cases exercised in the first test",
+  "source_sha256": {
+    "tools/time_release_benchmark.py": "5832c74bc97e7010a063f5d454b665333d922ddd59349060f403bc6654988973",
+    "tools/benchmark_host.py": "829189121a1945bf5bb483f1543b41d912d44cfd5eb6a4b19ea5f3e18d6ddde8",
+    "tests/test_timing_collection.py": "911f493ea6c2e35399d2a3564b73cada132c56b0e66cf455352afa263aa59ca3"
+  },
+  "reproduction_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 .venv/bin/python -m unittest discover -s tests -p test_timing_collection.py -v",
+  "executed_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 ../n148-quality/.venv/bin/python -m unittest discover -s tests -p test_timing_collection.py -v"
+}
