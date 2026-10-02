@@ -1,0 +1,45 @@
+# Local compiler output
+/n148i
+/bench
+/compare
+/validate
+/benchmark-final
+/src/n148i
+/src/n148i.exe
+/gmon.out
+__pycache__/
+*.o
+*.tmp
+*.log
+!benchmarks/release/library-validation/validation.log
+.benchmark-deps/
+.venv/
+/.build/
+/cmake-build*/
+/builds/
+/build/
+/install/
+/consumer-build/
+/benchmark-final-nojxl
+/libn148i.a
+/libn148i.so*
+/libn148i.dylib*
+/n148i.dll
+/n148i.lib
+/*.zip
+
+# Generated codec output. Benchmark inputs and published datasets remain
+# versioned so the measurements are auditable.
+*.n148i
+*.pgm
+/output/*
+!/output/.gitkeep
+
+# Local visual comparison sites
+/blind-test/
+/blink-test/
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+*.swp

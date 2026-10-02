@@ -1,0 +1,34 @@
+{
+  "quality_helpers_unchanged_from_initial_run": true,
+  "functions_ast_sha256": {
+    "parse_driver": "d8a4d6f37b1b5dd56ab35ab41ec4ddff8b76ffa75a888dd8613b9dcdd572b92e",
+    "psnr": "333af3a3a96f76c73091d7a0c9fa579b9634db7cee93d4b5462d0e95e19960a5",
+    "external_metric": "6f8dfa2910f069f5edd4363c2b31efed247df5fc8201a133fb80a4027f42efa4",
+    "quality_metrics": "ee9ca2670f2d2f0fe8ececb1c8289d316e99faac2d32b46def65608918dc3792"
+  },
+  "untimed_quality_workers_initial": 3,
+  "untimed_quality_workers_after_checkpoint_resume": 6,
+  "note": "Untimed quality: only orchestration parallelism changed. Native binary identities, inputs, parameters and metric function bodies remained fixed; all timings from quality runs are discarded.",
+  "current_tools_sha256": {
+    "tools/analyze_release_benchmark.py": "952de7b9aa22ee7473f0e8f6e4bd3708fe1495dc69c95d45f96beb355d0e1ecd",
+    "tools/analyze_release_timing.py": "a978a4edd1ec049c0c8cdc309d763dce50961095d8ddbd293134f9b4a5f167e4",
+    "tools/audit_naming.py": "11fe52376ff0e3d82774a7c63ae28f4873a1e7342c0f16489c482de6db03dea9",
+    "tools/benchmark_host.py": "829189121a1945bf5bb483f1543b41d912d44cfd5eb6a4b19ea5f3e18d6ddde8",
+    "tools/benchmark_math.py": "ad4dc3eb1ccc270b80e1550b03e807c9c39356ef34f6ef6e8c7ba5e2cfe0b3b2",
+    "tools/benchmark_metrics.py": "7e8883737b9ba5395670a34f55c961b6062324c1a62dd4c6d7cea4d46e6bcad0",
+    "tools/compact_release_evidence.py": "96dff3fd23ec1de9844fe4623f4ac9690b1478326287ca70bb45f84b6eef3b50",
+    "tools/describe_webp.c": "ad02dfeecddc5774acdd4170c89c1c4197cf52bed8fc6819668bc6aeffb75d0c",
+    "tools/match_release_points.py": "cf2498e6bbf74cea54460d6130e66955f22eec093ee2a3ed728c3faa39b1a854",
+    "tools/plot_release_benchmark.py": "b6fc3f239c659b5b26e66cace55aad82f6907cf8c08eedc5a9b1fb63c588efb9",
+    "tools/prepare_release_benchmark.py": "6891dcb9ad8d027f15e62c9b0c19653912b9bd5aabd56370d402824b1e0587c3",
+    "tools/release_benchmark.py": "df467415df62c5b8fe7b4e55665ecf3d2809bd551f04b7e9416c7ffde31620e8",
+    "tools/render_release_readme.py": "3203eea200d31c7403bcb87b125654dbf5f282c3fe638ad61be74b34272dd99d",
+    "tools/requirements-benchmark.txt": "f3f3f5e53e18eb1cb994f5e1be7de21d9570324f717beb0297a3a4e078a3cda6",
+    "tools/time_release_benchmark.py": "5832c74bc97e7010a063f5d454b665333d922ddd59349060f403bc6654988973",
+    "tools/validate_release.py": "c4187bacdbe3ace8740a4ee3d2e6db23959710665838c1c9ac6678fe4a228366",
+    "tools/verify_release_evidence.py": "1271e92561a7466af34b8cdb3fe1aa0b871c65f91a48d2a7e52915294050a079"
+  },
+  "tool_hashes_scope": "Reproduction tool sources after orchestration review; frozen codec/input/binary identity is recorded separately in protocol.json/build.json. Quality function ASTs remained identical to the initial run.",
+  "tool_hashes_recorded_utc": "2026-10-01T21:05:59.333958+00:00",
+  "timing_recovery_amendment": "timing-procedure-amendment.json"
+}

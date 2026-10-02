@@ -1,0 +1,70 @@
+{
+  "platform": "Windows x86-64",
+  "compiler": "MinGW-w64 GCC",
+  "runtime_test": "pending native CI",
+  "commands": [
+    [
+      "cmake",
+      "-S",
+      "/home/william-lima/\u00c1rea de trabalho/n148",
+      "-B",
+      "/home/william-lima/\u00c1rea de trabalho/n148/.build/v2-release/windows",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DCMAKE_TOOLCHAIN_FILE=/home/william-lima/\u00c1rea de trabalho/n148/.build/v2-release/mingw-local.cmake",
+      "-DCMAKE_INSTALL_PREFIX=/home/william-lima/\u00c1rea de trabalho/n148/builds/windows-x86_64"
+    ],
+    [
+      "cmake",
+      "--build",
+      "/home/william-lima/\u00c1rea de trabalho/n148/.build/v2-release/windows",
+      "--parallel",
+      "2"
+    ],
+    [
+      "cmake",
+      "--install",
+      "/home/william-lima/\u00c1rea de trabalho/n148/.build/v2-release/windows"
+    ]
+  ],
+  "status": "build_pass",
+  "installed_shared_and_static_consumers": "compile_and_link_pass",
+  "consumer_commands": [
+    [
+      "cmake",
+      "-S",
+      "examples",
+      "-B",
+      "/home/william-lima/\u00c1rea de trabalho/n148/.build/v2-release/windows-consumer",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DCMAKE_TOOLCHAIN_FILE=/home/william-lima/\u00c1rea de trabalho/n148/.build/v2-release/mingw-local.cmake",
+      "-Dn148i_DIR=/home/william-lima/\u00c1rea de trabalho/n148/builds/windows-x86_64/lib/cmake/n148i"
+    ],
+    [
+      "cmake",
+      "--build",
+      "/home/william-lima/\u00c1rea de trabalho/n148/.build/v2-release/windows-consumer",
+      "--parallel",
+      "2"
+    ]
+  ],
+  "package_files_sha256": {
+    "LICENSE": "5dd400eeae23e132d92d05c98d39199007554b2fcbde4a3521694bc4d6ef5105",
+    "README.txt": "a5cd6437b8df0f05a6fd6ca10c46ccef035c7f317d2f2ef03ae2068525c7ad97",
+    "bin/n148i.dll": "38f03faa26d1f7fc8284207266bcff280637cf889de0762599d904560f36ac4b",
+    "bin/n148i.exe": "f51d7bb5b6a116d4fdcf4433ed8c591e8aa1e4933dd340e427712310620997b6",
+    "include/n148i.h": "cd2ac6582a51f5ed927222907ad26c197ed549b4d91e38341c7b48ace3c71d46",
+    "lib/cmake/n148i/n148iConfig.cmake": "da50e0cc58887b30f16e6e19b59a1908c7905c5c12870d8d73e23e6d18de9fcf",
+    "lib/cmake/n148i/n148iConfigVersion.cmake": "b5b1a53c1c9faa0581b289b9c91467fb73982bef4d224bd00641fea377db30ff",
+    "lib/cmake/n148i/n148iTargets-release.cmake": "ced8467e9dbc30b2f361af82fa1409299523396ca95de9856523f6ab8894ee77",
+    "lib/cmake/n148i/n148iTargets.cmake": "54ffbdbb8b3dfc1725add8fee202f90d463def29c3f61eae72c2b4ad469d84ef",
+    "lib/n148i.lib": "b3da23dc925a8c76cca2ae0c0ee790f2572af8199b5fd80827d971f4334c5f13",
+    "lib/pkgconfig/n148i.pc": "25605ac8731eb514e92e54cf72896cd3a6c0d5c2cb633e386f4f5e1a608149ee",
+    "lib/static/n148i.lib": "500215b7a71223d6feece5d2581eaa89ce63360482e07090e53e6d7607407e6c"
+  },
+  "dll_imports": [
+    "KERNEL32.dll",
+    "msvcrt.dll",
+    "libgcc_s_seh-1.dll"
+  ],
+  "runtime_note": "Cross compilation and linking passed. MinGW libgcc runtime is required at execution; native MSVC/runtime tests are pending CI."
+}

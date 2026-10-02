@@ -1,0 +1,28 @@
+{
+  "utc": "2026-10-01T21:04:19.678017+00:00",
+  "reason": "Repeated unrelated compute/browser CPU bursts invalidated long image blocks containing nine separate operating-point comparisons. Recovery is now scoped to the whole eight-codec group used in each actual comparison.",
+  "old_recovery_unit": "all operating points for one image/block",
+  "new_recovery_unit": "all codecs at one image/mode/level within a block",
+  "unchanged": [
+    "codec source and binaries",
+    "images and quality measurements",
+    "matched operating points",
+    "CPU affinity and single-thread settings",
+    "external CPU thresholds and observed process names",
+    "two timing blocks and seven repetitions",
+    "warmups and batch calibration",
+    "seeded order and complete reversal in second block",
+    "bootstrap analysis and stopping rule"
+  ],
+  "additional_check": "Reject if a row before observation or final group observation reports interference, including when the after observation has already cleared.",
+  "timing_outcomes_analyzed_before_change": false,
+  "all_initial_timing_samples_excluded": true,
+  "excluded_initial_collection": {
+    "accepted_image_blocks": 2,
+    "rejected_image_blocks": 26,
+    "accepted_driver_repetitions": 1008
+  },
+  "previous_protocol_sha256": "cb83bb5572db221c1dd9647d6c3b51f334911937493ba7cd400780222b720ebe",
+  "amended_protocol_sha256": "7da69a9c3c46346f8e6ccf0177847e4154c132168982e41d04c1baf13dac510d",
+  "scope": "Scheduling/recovery amendment only. Quality results are unchanged; the full official timing matrix is restarted. Timing values were not used to choose this change."
+}

@@ -1,0 +1,174 @@
+{
+  "schema": "n148i-release-protocol-v1",
+  "frozen_utc": "2026-10-01T17:33:58.701564+00:00",
+  "release": "V2",
+  "corpus_sha256": "368efd1fc703a93e3207dfa3252491f9b9bafd72db1510e440bbfce3805a6c67",
+  "count": 130,
+  "scope": "Descriptive release benchmark on the complete development corpus; not an unseen holdout.",
+  "source_sha256": {
+    "src/huffman.h": "e432e03460261472aa6a304d90ceef0eca2db414f7e57ad1037f33dba4c57656",
+    "src/decoder.h": "be70ef22369021f4181f1f196955e25d202001729a1836d5d390ab077fef4fad",
+    "src/ppm.h": "24a5ac0590c533610e175f6bdf7bc043a6fa8417f0931b93323f46f43bf228d2",
+    "src/compare_cli.c": "9b69985aa2934c78387b2f5dc1627785d09c4dce7af4aa963b36864cc62fb9be",
+    "src/luma_profile.c": "0c6c0c7ab0fcdc53275c73bb1f6c8ffe5ee0e3f36ba1416327c1398105cb2dc9",
+    "src/loop_filter.h": "ac9296ab366367ca62dc2c0415441e9b4ab14073868d961c392f92738bb32e91",
+    "src/header.c": "237d401f0c7f70556fbec614d00f19e9daee78d352209c066bec194ac488cb59",
+    "src/validate_cli.c": "1f9f6ecee7ef99b27ee09354ce0100d8e9033542f33138e2068a210beaf1a3db",
+    "src/fidelity_profile.c": "003ffb8ecbee9462d0db5e65b76d43f7a89dfe82f10ca2b198db3b17214e2e16",
+    "src/perceptual.c": "507f5dd4d89bdbc4ab917098e43236b222dea72259c789a529364de4594cdcba",
+    "src/quantize4_avx2.inc": "81a0a96be7b783bfea2cce6c64a7ce76b07ab6704900ec2ae9d59f98baa3e5e8",
+    "src/variable_transform.h": "8e81917c1f898a6de701d6e66d4bd17703e5f65512228b9ea31a9cfbf3aceaf8",
+    "src/bench_cli.c": "7502045e5f08d33db879ea1601a65ac29b0b1dd198ab3d277975dbefb13c1c15",
+    "src/dct32_q14.inc": "caed410e70b0985cf4d7da5297821700b64208d01bd9a8977f4fd977b7661208",
+    "src/variable_zigzag_tables.inc": "86252908c48e909f4732f1be88d44904f151864eafdcf029c708c4a39063261a",
+    "src/variable_transform.c": "f623c25cfea19b1daea811b31491dad1c25e120956c88142b338695adb3d8da4",
+    "src/segmentation.c": "45a35a6ac790977aa57152c191b5d4fba91ec26e67a5a6e7c8f5d209f20e9715",
+    "src/tables.c": "5146c74f7d4913a53abd7a9515bc6ababf6294b1894773a43e473e68741ff652",
+    "src/chroma_profile.h": "e77aa1d89db15fa396fac3c330c8b505a4f60cd92a3bc9cac4db52387cea13a2",
+    "src/luma_profile.h": "32705213491b916242e8cb121f20a3e3eb7d1062730c299344db3461732942d6",
+    "src/loop_filter.c": "db7e26b23d2b7433d89a1bc8ebce65ecc15d1c2e86a9ad22bab2573649f5ae4f",
+    "src/huffman.c": "4b0fe7f4d20fd3749c4a9c747b2da20b1e5759ea880dcfcff6600f43267c2925",
+    "src/predictive_codec.h": "bd855443702fbceb4ac2782631b1ca709df4a86f3fe7c6e52ddfdff7c0d36429",
+    "src/parallel.h": "8d0defea8587741e6bd400545c14c1820edc9ae0a700dded1dc824485fc22c11",
+    "src/rans.h": "20f46057a1bd08baa8d51df2c331c178ff046d968d5478ebe24d2f1e72232a86",
+    "src/fidelity_profile.h": "7cadbdebb633965b93044f2afc10ba566e351e07af2118b73ffad3d42ff6fd4d",
+    "src/segmentation.h": "2f8b06685b9c0cbd97024894d64d2255474c165c82bde29b213a3b8a17d131e4",
+    "src/cpu.h": "a04e99d01f73cca91d22bd2289edfaef961be0c155a04fdf0174557d30b97840",
+    "src/rans.c": "9bb381e39097aac983a8235cb57cebdd0387c48a45b71ef52880a6f5bc6b4934",
+    "src/directional_intra.c": "25f42dcaa4f02bc9fb6357bf1674f1740d5c54d9700659c833f35f753c73a06a",
+    "src/cpu.c": "da83298b11678acb3fa09dee3f881ab46b2e734661f67af56d7225a2b55d8f6b",
+    "src/entropy_payload.c": "c73ef7058d12ead8f148287a17a7a0613f586cc644d56d63523afad057d0d489",
+    "src/parallel.c": "e4d6e050e18cdf2d33fdfc276e5abd23c03afacf166497b7782ed1259685c0f4",
+    "src/dct_forward_transposes.inc": "9ebe14c99d584ef80353fd632a4bbb70fae631361185dea62250951c281fd744",
+    "src/encoder.c": "5e8bd9dbb7388caba4527114ceb6c4768d91414460ad688b56c161b200892577",
+    "src/dct.h": "b63bb2102e95b7bc65c2b9a69c39bff5d5eb8dd841e101d9c010f0191d5560ff",
+    "src/n148i.c": "9ba3380af21d00fb00130a665a2bee6aeb158fdda999d503923086f16ef9b078",
+    "src/encoder.h": "42b31edca734d26e4f24c63fc22de60e33ccced64bbb9f490d8eaeb86d749fbf",
+    "src/entropy_profile.c": "b44d0cf4cd3d30f62d04c6a221c087ca239a2b1b27069d9b53e0ac7b87e2e376",
+    "src/intra.c": "bc179c345bd66e3ffed0b5eeae3437f6ca3cd923adc422b478995fdc5fcf3d7a",
+    "src/perceptual.h": "edcbec2b9873a64b1b318563de4ca5b3a039aba665bdd61c5e8f250b0d0ecdbc",
+    "src/header.h": "6a9cd1c62ed5f39ea9477556b9990af618bb70771405927dc62c93f82d93fd1c",
+    "src/benchmark_final_cli.c": "9936a6f2d0bd065f34d20da336e250f50c6fb160fef9bbdf7bae05e810a57624",
+    "src/rdo.h": "6b8a057d20c895168a7ccac36067b3d0f1c692dc444ccbd1c9eada5aaa83ff6c",
+    "src/entropy_payload.h": "db9dce65380006f244240bfc3ef1f22b3fe7b32a9f66159784fd526f0cc60737",
+    "src/rdo.c": "562a4ec12bdd8cfb42b38d51ee260c3d36ecd27f6c53aa3549fdec49fa682369",
+    "src/tables.h": "b49615cd5bf8dd026589d4b158e9122e10c3e2305d9ea2ae6e16ee60918324c7",
+    "src/chroma_profile.c": "3e346d585c90a0eb87272a39296b0e12175abb724c91467eb165e49819722049",
+    "src/ppm.c": "83dc334c564dd2726ae8262ac7c3b7872352c272a8f248f8cd509e63fb7143d9",
+    "src/entropy_profile.h": "fe8832986817a9584e21abd4c6fabb39e2f5ab50f252b03afcfd07978692579d",
+    "src/decoder.c": "7ee80cf7e5a73a0a57ddcd695b0c5de9309fc0a64c70f40767a5f653d865124f",
+    "src/adaptive_quant.c": "641dd1a7f6d8ff32a2bfc6301e2101e7fffe1905cef1b20522c7183a08b84eea",
+    "src/dct.c": "4e4dbf55d49b168c2df57a9bdf51fc4e899f82c11144be65e04f3ba9d5990d6f",
+    "src/intra.h": "405093e0bbbce8faf99edb78840012a86245ccc14d3a06dd2d864d6950ff7fd0",
+    "src/adaptive_quant.h": "488c33bf3ccee3403cb2a4273eaf9f6a449292fa88a5d5410f79ccedf3a46858",
+    "src/directional_intra.h": "1f1d0287585e4035d3bd669c175208c4fc3732a867ad4c895d175bd9f24e73e6",
+    "src/luma_projection_avx2.inc": "fc1cded2311ea6be3a5a0382c7bb8a06721ca4788de405b96d0ad0a0b863cbbb",
+    "src/main.c": "b9c96a8ff00a9bd852548a4a492150c7881938586c44965ce401d55a9d14a5a2",
+    "include/n148i.h": "cd2ac6582a51f5ed927222907ad26c197ed549b4d91e38341c7b48ace3c71d46",
+    "Makefile": "344f31c784523c5a2c8ab1ef0084b498f236c8ffea3c55b51f18203820f2648a",
+    "CMakeLists.txt": "f2f252085aec985d25317603c1d6469ea8bb08bda861a92b8f82b3db1213c754",
+    "cmake/n148i.map": "bbc449fc059554141c332cd2334f0c04513c4cdf9e08aac9e33640dee56c8786"
+  },
+  "codecs": {
+    "n148i_v1": [
+      "v1",
+      "n148i"
+    ],
+    "n148i_v2": [
+      "current",
+      "n148i"
+    ],
+    "jpeg_turbo": [
+      "current",
+      "jpeg"
+    ],
+    "webp_m4": [
+      "current",
+      "webp_m4"
+    ],
+    "webp_m6": [
+      "current",
+      "webp_m6"
+    ],
+    "webp_m6_historical": [
+      "historical",
+      "webp_m6"
+    ],
+    "jxl_e3": [
+      "current",
+      "jxl_e3"
+    ],
+    "jxl_e7": [
+      "current",
+      "jxl_e7"
+    ]
+  },
+  "qualities": [
+    30,
+    45,
+    60,
+    75,
+    90
+  ],
+  "jxl_distances": [
+    8.0,
+    5.0,
+    3.0,
+    1.5,
+    0.7
+  ],
+  "profile": {
+    "features": "0xd8a6d7ff",
+    "effort": 3,
+    "chroma": "420",
+    "chroma_quality": "luma",
+    "threads": 1
+  },
+  "metrics": [
+    "psnr_y_db",
+    "psnr_rgb_db",
+    "ssim",
+    "ms_ssim",
+    "ssimulacra2",
+    "butteraugli",
+    "psnr_chroma_db"
+  ],
+  "quality": "Same definitions as quality_metrics(); all RGB reconstructions compared with original PPM. Pooled-MSE PSNR, pixel-weighted other metrics, PCHIP BD-rate over shared ranges only; no extrapolation.",
+  "uncertainty": {
+    "unit": "image",
+    "paired": true,
+    "stratify_by": "category",
+    "replicates": 10000,
+    "seed": 14820261001,
+    "interval": "percentile 95%",
+    "joint_quality_claim": "Bonferroni 7 metrics per reference; two-sided family alpha 0.05",
+    "limits": "Conditional on this development sample; does not remove tuning bias or estimate cross-host uncertainty."
+  },
+  "timing": {
+    "cpu": 0,
+    "threads": 1,
+    "blocks": 2,
+    "repetitions_per_block": 7,
+    "warmups": 2,
+    "sample_ms": 20,
+    "order": "Seeded codec shuffle; second block reverses each first-block order",
+    "nominal_points": [
+      30,
+      60,
+      90
+    ],
+    "matched_modes": [
+      "bytes",
+      "ssim"
+    ],
+    "targets": "25%, 50%, 75% of per-image common curve range across all codecs; log scale for bytes, linear for SSIM",
+    "matching": "Bracketed parameter search inside measured endpoints; nearest achievable point; record all residuals and unmatched cases",
+    "size_tolerance_relative": 0.02,
+    "ssim_tolerance_absolute": 0.0005,
+    "interference": "Wait on external QEMU/compiler jobs and CPU load guard; repeat all eight codecs at one image/mode/level if any before/after observation reports interference; preserve other completed groups. Never interrupt other jobs or discard based on which codec wins.",
+    "recovery_unit": "all codecs at one image/mode/level within a block"
+  },
+  "hardware": "This host only; another processor remains pending.",
+  "stopping": "Complete matrix and all declared timing points, independent of win/loss. No codec tuning during this benchmark.",
+  "timing_procedure_amendment": "timing-procedure-amendment.json"
+}

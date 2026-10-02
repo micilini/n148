@@ -1,0 +1,155 @@
+{
+  "description": "Unmodified source and build files from the first public N.148i library merge",
+  "upstream_commit": "86cd4feb285c24ae26106bf6b3811194a8c149c2",
+  "archive_sha256": "93a9ca6c8223e79c149984a39d83544d35be36240c02d412b84146a357b2851f",
+  "files": [
+    {
+      "path": "CMakeLists.txt",
+      "sha256": "724e8ca98f9692cfd15ff321975cf0c5628b0039002f44f48e098b20a672598a"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "5dd400eeae23e132d92d05c98d39199007554b2fcbde4a3521694bc4d6ef5105"
+    },
+    {
+      "path": "Makefile",
+      "sha256": "62fd9bdbd7460cf48e2f495623a48453c20e635e63f5fd131254444518b2b2c1"
+    },
+    {
+      "path": "cmake/n148i.map",
+      "sha256": "2029f26669d896764c9b9b782368234295c2e6d14019445f432b73beb94ed582"
+    },
+    {
+      "path": "cmake/n148i.pc.in",
+      "sha256": "6361442ef5c3b5a3256643d5cec7d9cbe6f6b4c2bb24cdec33f21b500cc1f615"
+    },
+    {
+      "path": "cmake/n148iConfig.cmake.in",
+      "sha256": "1473c1ec75df55c5d951718a7cdefeab5cdd98165f960127a12d18464d6499c2"
+    },
+    {
+      "path": "cmake/toolchains/mingw-w64-x86_64.cmake",
+      "sha256": "b2a4529e4eeb30355a0f845d0642f5ec16d3793c0937a6d370969c7398387876"
+    },
+    {
+      "path": "examples/CMakeLists.txt",
+      "sha256": "08331ed334793fc259e6dab06716ac4493998640d54ad0736681cbdfc29d9f9a"
+    },
+    {
+      "path": "examples/memory_roundtrip.c",
+      "sha256": "2e7c7e988d45348903bddb3bba5e00de9d6a8689580b4a258872d78d87bd640b"
+    },
+    {
+      "path": "include/n148i.h",
+      "sha256": "40902eebed92ecb5d9f59ce6696c477a14319dcb4eaad3b702629b85379ffa7c"
+    },
+    {
+      "path": "packaging/README-Darwin.txt",
+      "sha256": "f14a2957cac3d33c85874da43070805c1960e65ba12cfaf3df075bd666ce99f4"
+    },
+    {
+      "path": "packaging/README-Linux.txt",
+      "sha256": "675b830236c73a20d3533c120ec973efb1e995cd36d86e6b7df91d76e3b2529b"
+    },
+    {
+      "path": "packaging/README-Windows.txt",
+      "sha256": "eefc910a8e1c469efbaae2951391b8005c7af30bb5139e09cca828403156d310"
+    },
+    {
+      "path": "src/bench_cli.c",
+      "sha256": "7502045e5f08d33db879ea1601a65ac29b0b1dd198ab3d277975dbefb13c1c15"
+    },
+    {
+      "path": "src/benchmark_final_cli.c",
+      "sha256": "7ef316d706f38d2b35fc69aba6e52ba3044dd8d6662dcf19fc5b1bed3180d371"
+    },
+    {
+      "path": "src/compare_cli.c",
+      "sha256": "9b69985aa2934c78387b2f5dc1627785d09c4dce7af4aa963b36864cc62fb9be"
+    },
+    {
+      "path": "src/cpu.c",
+      "sha256": "da83298b11678acb3fa09dee3f881ab46b2e734661f67af56d7225a2b55d8f6b"
+    },
+    {
+      "path": "src/cpu.h",
+      "sha256": "a04e99d01f73cca91d22bd2289edfaef961be0c155a04fdf0174557d30b97840"
+    },
+    {
+      "path": "src/dct.c",
+      "sha256": "8b224b20cd14e2e4a7c116594db8ef35d9c5d289d49f22f8ea136bce46cd785a"
+    },
+    {
+      "path": "src/dct.h",
+      "sha256": "b477ce8b7ccddbf2a6e31a574a8ce69c9cea3465c924d1d0568908030f22bbb3"
+    },
+    {
+      "path": "src/decoder.c",
+      "sha256": "2cdc8233fb65a2d6772921a10b6ef6b437ebb6409972514099df6a7512b61c48"
+    },
+    {
+      "path": "src/decoder.h",
+      "sha256": "9a2f6c643f249a56dabe30523087eb9a265ab17cd607eca772552fa41f6d64cf"
+    },
+    {
+      "path": "src/encoder.c",
+      "sha256": "e1f348031af13b35421a9b768c589da6d7dab7b2e76753af994996307101b0e0"
+    },
+    {
+      "path": "src/encoder.h",
+      "sha256": "6c65eef3d03e18b7c794105769b4000e5822f622a8fe9ba2d08c163bd8c33b88"
+    },
+    {
+      "path": "src/header.c",
+      "sha256": "237d401f0c7f70556fbec614d00f19e9daee78d352209c066bec194ac488cb59"
+    },
+    {
+      "path": "src/header.h",
+      "sha256": "518b4b43ce264b472e7db3325c345a69f6894467c47fb73e30f8f471e3c8d115"
+    },
+    {
+      "path": "src/huffman.c",
+      "sha256": "4b0fe7f4d20fd3749c4a9c747b2da20b1e5759ea880dcfcff6600f43267c2925"
+    },
+    {
+      "path": "src/huffman.h",
+      "sha256": "e432e03460261472aa6a304d90ceef0eca2db414f7e57ad1037f33dba4c57656"
+    },
+    {
+      "path": "src/main.c",
+      "sha256": "1080c18682ed25633e53965e78d3e4c297f1e16451257ab9c8717652148a074a"
+    },
+    {
+      "path": "src/n148i.c",
+      "sha256": "ae0fc042937fc399f430654bffb06be13cb2f95d9ec052b89ca6b2a4b5c18fac"
+    },
+    {
+      "path": "src/parallel.c",
+      "sha256": "e4d6e050e18cdf2d33fdfc276e5abd23c03afacf166497b7782ed1259685c0f4"
+    },
+    {
+      "path": "src/parallel.h",
+      "sha256": "8d0defea8587741e6bd400545c14c1820edc9ae0a700dded1dc824485fc22c11"
+    },
+    {
+      "path": "src/ppm.c",
+      "sha256": "682b4e62a0c284bddb2e3fb01f6b893af85817ea7ca29552c5f7a23d0cf1546e"
+    },
+    {
+      "path": "src/ppm.h",
+      "sha256": "86e779a7fc2a581f97b15bbe1f7a660ba980ad31f7670c76cf9ec9cc40f6451b"
+    },
+    {
+      "path": "src/tables.c",
+      "sha256": "5234b47dc081be97c2740637afe415bb649b499c671e04b4aab56286b71df817"
+    },
+    {
+      "path": "src/tables.h",
+      "sha256": "9658f3c8a890299a98f408865a08b85db7c7b286cc01c64f3af114c2e1ffbcb9"
+    },
+    {
+      "path": "src/validate_cli.c",
+      "sha256": "0050d190dbf8141c777cda713bf64a628bec6bd8396c6d9b14df9d4667c71510"
+    }
+  ]
+}

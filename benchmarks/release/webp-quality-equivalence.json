@@ -1,0 +1,6 @@
+{
+  "comparison": "libwebp 1.6.0 M6 versus system libwebp 1.3.2 M6",
+  "cases": 650,
+  "identical_sizes_and_decoded_ppm_sha256": 650,
+  "scope": "Encoded bitstream hashes were not collected; this checks file size and decoded pixels/header only."
+}
