@@ -6,8 +6,8 @@
 
 #define N148I_MAGIC "N148I"
 #define N148I_MAGIC_LEN 5
-#define N148I_VERSION 1
-#define N148I_HEADER_SIZE 21
+#define N148_FORMAT_VERSION_1 1
+#define N148_FORMAT_1_HEADER_SIZE 21
 
 // Chroma subsampling modes.
 #define CHROMA_444 0

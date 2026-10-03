@@ -1,5 +1,5 @@
 /* N.148i exported ABI, Copyright (c) 2026 Micilini Roll, MIT License. */
-N148I_1.0 {
+N148I_2.0 {
     global:
         n148i_*;
     local:

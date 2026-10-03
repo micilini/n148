@@ -1,0 +1,44 @@
+{
+  "purpose": "Detailed protocol implementation; timing recovery was subsequently amended as documented in timing-procedure-amendment.json before any timing analysis.",
+  "matching": {
+    "maximum_extra_probes_per_target": 16,
+    "stop": "first point within tolerance; otherwise closest tested point",
+    "integer_parameters": [
+      "n148i_v1",
+      "n148i_v2",
+      "jpeg_turbo"
+    ],
+    "bounds": "measured five-point endpoints",
+    "search": "bounded secant with interval contraction; cached probes reused"
+  },
+  "timing_analysis": {
+    "pairwise_tolerance_required": true,
+    "unit": "images stratified by content category, then blocks and repetitions paired across codecs",
+    "point_estimate": "ratio of sums of per-image median milliseconds",
+    "bootstrap_replicates": 10000,
+    "confidence": "95% percentile; Bonferroni 6 for each reference and matching mode"
+  },
+  "quality_sensitivity": "Report full five-point BD-rate and omission of each interior point separately; sensitivity is diagnostic, not a confidence interval.",
+  "common_speed_table": {
+    "mode": "bytes",
+    "level": "medium",
+    "selection": "all eight codecs match target and actual WebP M6 bytes within 2% per image",
+    "scope": "one common subset for all rows; report coverage; no substitution for full-corpus results",
+    "confidence": "95% percentile; optional Bonferroni 14 comparisons (7 alternatives x2 operations)"
+  },
+  "timing_interference_guard": {
+    "observed_process_names": [
+      "qemu-system*",
+      "cc1",
+      "cc1plus",
+      "clang",
+      "clang++",
+      "ninja",
+      "rustc"
+    ],
+    "external_single_process_cpu_cores": 0.5,
+    "external_aggregate_cpu_cores": 1.0,
+    "minimum_observation_seconds": 0.75,
+    "policy": "Wait before timing; repeat all codecs at one image/mode/level within a block on any before/after interference observation. Checkpoint other complete operating-point groups. No external process is interrupted. Short-lived jobs can escape sampling."
+  }
+}

@@ -1,14 +1,22 @@
-N.148i v1 for macOS
+N.148i V2 library
 Copyright (c) 2026 Micilini Roll. Licensed under the MIT License.
 
-The shared library is in lib/libn148i.dylib and the static library is in
-lib/static/libn148i.a. Include include/n148i.h in your application.
+Include include/n148i.h and initialize options with
+n148i_encode_options_init(). The V2 default is the detail reconstruction
+profile (0xd8a6d7ff), effort 3, 4:2:0, with equal luma/chroma quality.
+The product name is V2; the numeric package/ABI version is 2.0.0.
+The on-stream format identifier is independently 7. Formats 1 through 7
+remain readable. Use N148I_FORMAT_VERSION_1 and feature_flags = 0 for
+legacy Huffman output; numbered format presets retain their original masks.
+Encode/decode calls in a process require external serialization.
+Free library allocations with n148i_free_buffer()/n148i_free_image().
 
-Shared link example:
-  cc app.c -Iinclude -Llib -ln148i -Wl,-rpath,@loader_path/lib -o app
+CMake consumer:
+  find_package(n148i 2 CONFIG REQUIRED)
+  target_link_libraries(app PRIVATE n148i::n148i)
+Use n148i::n148i_static for static linkage.
 
-Static link example:
-  cc app.c -DN148I_STATIC_DEFINE -Iinclude lib/static/libn148i.a \
-     -pthread -lm -o app
-
-The release workflow builds one universal binary for x86-64 and Apple Silicon.
+Shared library: lib/libn148i.dylib. Static library: lib/static/libn148i.a.
+Provide an appropriate @rpath or bundle the dylib with your application.
+The CI package includes x86_64 and arm64 slices. Intel can dispatch AVX2;
+Apple Silicon uses the portable scalar implementation.

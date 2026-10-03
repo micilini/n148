@@ -11,7 +11,90 @@ const int Q_LUMA_BASE[8][8] = {
     {72, 92, 95, 98, 112, 100, 103, 99}
 };
 
+/* Format 5's accepted table is a 12.5% geometric blend toward the measured
+   residual-standard-deviation shape, scaled by 1.4 to preserve the
+   luma/chroma rate balance. Keeping it format-local protects format 1-4 streams. */
+const int FORMAT_5_LUMA_QUANT_BASE[8][8] = {
+    {22, 15, 14, 20, 28, 44, 53, 60},
+    {16, 16, 18, 23, 29, 58, 58, 53},
+    {18, 16, 19, 27, 42, 56, 65, 53},
+    {18, 20, 25, 32, 51, 80, 73, 57},
+    {21, 25, 39, 55, 65, 96, 90, 67},
+    {27, 36, 54, 61, 74, 91, 95, 77},
+    {49, 60, 71, 77, 89, 101, 97, 81},
+    {67, 80, 82, 83, 92, 82, 82, 77}
+};
+
+/* Format 7's optional spectral profile redistributes bits from the first
+   spatial frequencies to fine luma detail. The shape was guided by a
+   matched-rate reconstruction diagnosis; the old table stays intact for
+   every pre-existing stream. */
+const int N148_SPECTRAL_LUMA_QUANT_BASE[8][8] = {
+    {26, 17, 16, 20, 28, 44, 53, 48},
+    {19, 19, 18, 23, 29, 58, 46, 42},
+    {21, 16, 19, 27, 42, 45, 52, 42},
+    {18, 20, 25, 32, 41, 64, 58, 46},
+    {21, 25, 39, 44, 52, 77, 72, 46},
+    {27, 36, 43, 49, 59, 73, 65, 52},
+    {49, 48, 57, 62, 71, 69, 66, 55},
+    {54, 64, 66, 66, 63, 56, 56, 52},
+};
+
+/* Format 7's refined spectral profile moves a small bit budget from the low
+   band to fine luma detail: low-band steps rise by about 8%, middle-band
+   steps stay fixed, and high-band steps fall by about 4%. The extra format-7
+   feature bit keeps previously encoded spectral streams on their table. */
+const int N148_REFINED_SPECTRAL_LUMA_QUANT_BASE[8][8] = {
+    {28, 18, 17, 20, 28, 44, 53, 46},
+    {21, 21, 18, 23, 29, 58, 44, 40},
+    {23, 16, 19, 27, 42, 43, 50, 40},
+    {18, 20, 25, 32, 39, 61, 56, 44},
+    {21, 25, 39, 42, 50, 74, 69, 44},
+    {27, 36, 41, 47, 57, 70, 62, 50},
+    {49, 46, 55, 60, 68, 66, 63, 53},
+    {52, 61, 63, 63, 60, 54, 54, 50},
+};
+
 const int Q_CHROMA_BASE[8][8] = {
+    {17, 18, 24, 47, 99, 99, 99, 99},
+    {18, 21, 26, 66, 99, 99, 99, 99},
+    {24, 26, 56, 99, 99, 99, 99, 99},
+    {47, 66, 99, 99, 99, 99, 99, 99},
+    {99, 99, 99, 99, 99, 99, 99, 99},
+    {99, 99, 99, 99, 99, 99, 99, 99},
+    {99, 99, 99, 99, 99, 99, 99, 99},
+    {99, 99, 99, 99, 99, 99, 99, 99}
+};
+
+/* Format 4 keeps its chroma-residual table separate so calibration cannot change
+   any format 1, 2, or 3 stream. These accepted weights retain more medium/high
+   frequency chroma detail than the heavily saturated historical table. */
+const int FORMAT_4_CHROMA_QUANT_BASE[8][8] = {
+    {17, 18, 24, 40, 70, 80, 90, 99},
+    {18, 21, 26, 48, 70, 85, 95, 99},
+    {24, 26, 40, 60, 80, 90, 99, 99},
+    {40, 48, 60, 75, 90, 99, 99, 99},
+    {70, 70, 80, 90, 99, 99, 99, 99},
+    {80, 85, 90, 99, 99, 99, 99, 99},
+    {90, 95, 99, 99, 99, 99, 99, 99},
+    {99, 99, 99, 99, 99, 99, 99, 99}
+};
+
+/* Segmentation starts from the mature JPEG frequency weighting, then calibrates
+   the plane scales in its own colour space. Keeping dedicated tables makes
+   that calibration normative without changing any earlier stream. */
+const int Q_PERCEPTUAL_INTENSITY_BASE[8][8] = {
+    {16, 11, 10, 16, 24, 40, 51, 61},
+    {12, 12, 14, 19, 26, 58, 60, 55},
+    {14, 13, 16, 24, 40, 57, 69, 56},
+    {14, 17, 22, 29, 51, 87, 80, 62},
+    {18, 22, 37, 56, 68,109,103, 77},
+    {24, 35, 55, 64, 81,104,113, 92},
+    {49, 64, 78, 87,103,121,120,101},
+    {72, 92, 95, 98,112,100,103, 99}
+};
+
+const int Q_PERCEPTUAL_OPPONENT_BASE[8][8] = {
     {17, 18, 24, 47, 99, 99, 99, 99},
     {18, 21, 26, 66, 99, 99, 99, 99},
     {24, 26, 56, 99, 99, 99, 99, 99},
@@ -101,3 +184,26 @@ void scale_table(const int base[8][8], int quality, int output[8][8]) {
         }
     }
 }
+
+/* Derived from N.148 spatial-basis error energy, with six protected low frequencies. */
+const int N148_BALANCED_LUMA_QUANT_BASE[8][8] = {
+    {28, 25, 25, 28, 29, 31, 32, 31},
+    {26, 26, 28, 28, 29, 32, 31, 30},
+    {27, 27, 28, 29, 31, 31, 31, 30},
+    {28, 28, 29, 30, 30, 32, 32, 31},
+    {28, 29, 30, 31, 31, 33, 33, 31},
+    {29, 30, 31, 31, 32, 33, 32, 31},
+    {31, 31, 32, 32, 33, 33, 32, 32},
+    {32, 32, 32, 32, 32, 32, 32, 31},
+};
+
+const int N148_STRUCTURAL_LUMA_QUANT_BASE[8][8] = {
+    {28, 18, 17, 28, 33, 41, 45, 42},
+    {21, 21, 27, 30, 34, 47, 41, 39},
+    {23, 26, 27, 32, 40, 41, 44, 39},
+    {27, 28, 31, 35, 39, 49, 47, 41},
+    {29, 31, 39, 40, 44, 54, 52, 41},
+    {32, 37, 40, 43, 47, 52, 49, 44},
+    {44, 42, 46, 48, 51, 51, 49, 45},
+    {45, 49, 49, 49, 48, 46, 46, 44}
+};

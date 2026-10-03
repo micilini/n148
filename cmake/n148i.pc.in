@@ -7,7 +7,7 @@ libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
 includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
 
 Name: n148i
-Description: N.148i v1 experimental lossy image codec
+Description: N.148i experimental lossy image codec with format 1-7 decoding
 Version: @PROJECT_VERSION@
 Libs: -L${libdir} -ln148i
 Cflags: -I${includedir}

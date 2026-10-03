@@ -1,13 +1,5 @@
 {
-  "schema_version": 1,
-  "project": "N.148i final benchmark corpus",
-  "copyright": "Copyright (c) Micilini Roll",
-  "project_license": "MIT",
-  "generated_at": "2026-09-05T21:55:52-03:00",
-  "source_policy": "Wikimedia Commons and Openverse; CC0, public domain, or CC BY only",
-  "converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-  "conversion_policy": "first frame; auto-orient; sRGB; bounded resize without upscaling; alpha flattened on white; metadata stripped; 8-bit binary P6",
-  "jpeg_source_policy": "every JPEG source is spatially resampled at least once; sources that would otherwise retain their dimensions are reduced by 10%, while keeping the shorter side at least 320 pixels, to avoid source-DCT-grid recompression artifacts",
+  "purpose": "Complete V2 development corpus. Not an independent validation sample.",
   "images": [
     {
       "image_id": 1,
@@ -66,7 +58,9 @@
       ],
       "retrieved_at": "2026-09-05T22:51:47-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:51:47-03:00"
+      "normalization_revised_at": "2026-09-05T22:51:47-03:00",
+      "source_image_id": 1,
+      "group": "original120"
     },
     {
       "image_id": 2,
@@ -122,7 +116,9 @@
       "provider": "wikimedia_commons",
       "source_id": "76696826",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:30:33-03:00"
+      "normalization_revised_at": "2026-09-05T22:30:33-03:00",
+      "source_image_id": 2,
+      "group": "original120"
     },
     {
       "image_id": 3,
@@ -178,7 +174,9 @@
       "provider": "wikimedia_commons",
       "source_id": "130884426",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:30:46-03:00"
+      "normalization_revised_at": "2026-09-05T22:30:46-03:00",
+      "source_image_id": 3,
+      "group": "original120"
     },
     {
       "image_id": 4,
@@ -237,7 +235,9 @@
       ],
       "retrieved_at": "2026-09-05T22:39:13-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:39:13-03:00"
+      "normalization_revised_at": "2026-09-05T22:39:13-03:00",
+      "source_image_id": 4,
+      "group": "original120"
     },
     {
       "image_id": 5,
@@ -293,7 +293,9 @@
       "provider": "wikimedia_commons",
       "source_id": "40073288",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:31:12-03:00"
+      "normalization_revised_at": "2026-09-05T22:31:12-03:00",
+      "source_image_id": 5,
+      "group": "original120"
     },
     {
       "image_id": 6,
@@ -349,7 +351,9 @@
       "provider": "wikimedia_commons",
       "source_id": "48776566",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:31:25-03:00"
+      "normalization_revised_at": "2026-09-05T22:31:25-03:00",
+      "source_image_id": 6,
+      "group": "original120"
     },
     {
       "image_id": 7,
@@ -405,7 +409,9 @@
       "provider": "wikimedia_commons",
       "source_id": "57374111",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:31:37-03:00"
+      "normalization_revised_at": "2026-09-05T22:31:37-03:00",
+      "source_image_id": 7,
+      "group": "original120"
     },
     {
       "image_id": 8,
@@ -461,7 +467,9 @@
       "provider": "wikimedia_commons",
       "source_id": "67402787",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:31:50-03:00"
+      "normalization_revised_at": "2026-09-05T22:31:50-03:00",
+      "source_image_id": 8,
+      "group": "original120"
     },
     {
       "image_id": 9,
@@ -517,7 +525,9 @@
       "provider": "wikimedia_commons",
       "source_id": "174772264",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:32:03-03:00"
+      "normalization_revised_at": "2026-09-05T22:32:03-03:00",
+      "source_image_id": 9,
+      "group": "original120"
     },
     {
       "image_id": 10,
@@ -573,7 +583,9 @@
       "provider": "wikimedia_commons",
       "source_id": "191353404",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:32:16-03:00"
+      "normalization_revised_at": "2026-09-05T22:32:16-03:00",
+      "source_image_id": 10,
+      "group": "original120"
     },
     {
       "image_id": 11,
@@ -629,7 +641,9 @@
       "provider": "wikimedia_commons",
       "source_id": "57364649",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:32:28-03:00"
+      "normalization_revised_at": "2026-09-05T22:32:28-03:00",
+      "source_image_id": 11,
+      "group": "original120"
     },
     {
       "image_id": 12,
@@ -685,7 +699,9 @@
       "provider": "wikimedia_commons",
       "source_id": "57368535",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:32:42-03:00"
+      "normalization_revised_at": "2026-09-05T22:32:42-03:00",
+      "source_image_id": 12,
+      "group": "original120"
     },
     {
       "image_id": 13,
@@ -743,7 +759,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:08-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 13,
+      "group": "original120"
     },
     {
       "image_id": 14,
@@ -802,7 +820,9 @@
       ],
       "retrieved_at": "2026-09-05T22:39:29-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:39:29-03:00"
+      "normalization_revised_at": "2026-09-05T22:39:29-03:00",
+      "source_image_id": 14,
+      "group": "original120"
     },
     {
       "image_id": 15,
@@ -861,7 +881,9 @@
       ],
       "retrieved_at": "2026-09-05T22:40:00-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:40:00-03:00"
+      "normalization_revised_at": "2026-09-05T22:40:00-03:00",
+      "source_image_id": 15,
+      "group": "original120"
     },
     {
       "image_id": 16,
@@ -919,7 +941,9 @@
       ],
       "retrieved_at": "2026-09-05T22:20:11-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:08-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:08-03:00",
+      "source_image_id": 16,
+      "group": "original120"
     },
     {
       "image_id": 17,
@@ -977,7 +1001,9 @@
       ],
       "retrieved_at": "2026-09-05T22:20:14-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:10-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:10-03:00",
+      "source_image_id": 17,
+      "group": "original120"
     },
     {
       "image_id": 18,
@@ -1035,7 +1061,9 @@
       ],
       "retrieved_at": "2026-09-05T22:20:16-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:11-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:11-03:00",
+      "source_image_id": 18,
+      "group": "original120"
     },
     {
       "image_id": 19,
@@ -1095,7 +1123,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:20-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 19,
+      "group": "original120"
     },
     {
       "image_id": 20,
@@ -1155,7 +1185,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:21-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 20,
+      "group": "original120"
     },
     {
       "image_id": 21,
@@ -1213,7 +1245,9 @@
       ],
       "retrieved_at": "2026-09-05T22:20:24-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:14-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:14-03:00",
+      "source_image_id": 21,
+      "group": "original120"
     },
     {
       "image_id": 22,
@@ -1271,7 +1305,9 @@
       ],
       "retrieved_at": "2026-09-05T22:20:26-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:15-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:15-03:00",
+      "source_image_id": 22,
+      "group": "original120"
     },
     {
       "image_id": 23,
@@ -1329,7 +1365,9 @@
       ],
       "retrieved_at": "2026-09-05T22:20:29-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:16-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:16-03:00",
+      "source_image_id": 23,
+      "group": "original120"
     },
     {
       "image_id": 24,
@@ -1389,7 +1427,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:22-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 24,
+      "group": "original120"
     },
     {
       "image_id": 25,
@@ -1449,7 +1489,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:24-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 25,
+      "group": "original120"
     },
     {
       "image_id": 26,
@@ -1509,7 +1551,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:25-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 26,
+      "group": "original120"
     },
     {
       "image_id": 27,
@@ -1567,7 +1611,9 @@
       ],
       "retrieved_at": "2026-09-05T22:20:39-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:21-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:21-03:00",
+      "source_image_id": 27,
+      "group": "original120"
     },
     {
       "image_id": 28,
@@ -1625,7 +1671,9 @@
       ],
       "retrieved_at": "2026-09-05T22:20:41-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:22-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:22-03:00",
+      "source_image_id": 28,
+      "group": "original120"
     },
     {
       "image_id": 29,
@@ -1685,7 +1733,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:26-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 29,
+      "group": "original120"
     },
     {
       "image_id": 30,
@@ -1745,7 +1795,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:27-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 30,
+      "group": "original120"
     },
     {
       "image_id": 31,
@@ -1803,7 +1855,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:07-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:25-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:25-03:00",
+      "source_image_id": 31,
+      "group": "original120"
     },
     {
       "image_id": 32,
@@ -1861,7 +1915,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:09-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:27-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:27-03:00",
+      "source_image_id": 32,
+      "group": "original120"
     },
     {
       "image_id": 33,
@@ -1919,7 +1975,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:12-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:28-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:28-03:00",
+      "source_image_id": 33,
+      "group": "original120"
     },
     {
       "image_id": 34,
@@ -1979,7 +2037,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:28-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 34,
+      "group": "original120"
     },
     {
       "image_id": 35,
@@ -2039,7 +2099,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:29-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 35,
+      "group": "original120"
     },
     {
       "image_id": 36,
@@ -2097,7 +2159,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:20-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:31-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:31-03:00",
+      "source_image_id": 36,
+      "group": "original120"
     },
     {
       "image_id": 37,
@@ -2155,7 +2219,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:23-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:32-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:32-03:00",
+      "source_image_id": 37,
+      "group": "original120"
     },
     {
       "image_id": 38,
@@ -2213,7 +2279,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:25-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:34-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:34-03:00",
+      "source_image_id": 38,
+      "group": "original120"
     },
     {
       "image_id": 39,
@@ -2273,7 +2341,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:31-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 39,
+      "group": "original120"
     },
     {
       "image_id": 40,
@@ -2333,7 +2403,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:32-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 40,
+      "group": "original120"
     },
     {
       "image_id": 41,
@@ -2391,7 +2463,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:34-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:37-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:37-03:00",
+      "source_image_id": 41,
+      "group": "original120"
     },
     {
       "image_id": 42,
@@ -2449,7 +2523,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:36-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:38-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:38-03:00",
+      "source_image_id": 42,
+      "group": "original120"
     },
     {
       "image_id": 43,
@@ -2507,7 +2583,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:39-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:39-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:39-03:00",
+      "source_image_id": 43,
+      "group": "original120"
     },
     {
       "image_id": 44,
@@ -2565,7 +2643,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:42-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:40-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:40-03:00",
+      "source_image_id": 44,
+      "group": "original120"
     },
     {
       "image_id": 45,
@@ -2625,7 +2705,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:33-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 45,
+      "group": "original120"
     },
     {
       "image_id": 46,
@@ -2683,7 +2765,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:48-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:43-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:43-03:00",
+      "source_image_id": 46,
+      "group": "original120"
     },
     {
       "image_id": 47,
@@ -2741,7 +2825,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:51-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:44-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:44-03:00",
+      "source_image_id": 47,
+      "group": "original120"
     },
     {
       "image_id": 48,
@@ -2799,7 +2885,9 @@
       ],
       "retrieved_at": "2026-09-05T22:21:54-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:45-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:45-03:00",
+      "source_image_id": 48,
+      "group": "original120"
     },
     {
       "image_id": 49,
@@ -2859,7 +2947,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:34-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 49,
+      "group": "original120"
     },
     {
       "image_id": 50,
@@ -2919,7 +3009,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:35-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 50,
+      "group": "original120"
     },
     {
       "image_id": 51,
@@ -2977,7 +3069,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:03-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:48-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:48-03:00",
+      "source_image_id": 51,
+      "group": "original120"
     },
     {
       "image_id": 52,
@@ -3035,7 +3129,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:06-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:50-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:50-03:00",
+      "source_image_id": 52,
+      "group": "original120"
     },
     {
       "image_id": 53,
@@ -3093,7 +3189,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:08-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:51-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:51-03:00",
+      "source_image_id": 53,
+      "group": "original120"
     },
     {
       "image_id": 54,
@@ -3151,7 +3249,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:11-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:52-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:52-03:00",
+      "source_image_id": 54,
+      "group": "original120"
     },
     {
       "image_id": 55,
@@ -3211,7 +3311,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:36-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 55,
+      "group": "original120"
     },
     {
       "image_id": 56,
@@ -3269,7 +3371,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:16-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:54-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:54-03:00",
+      "source_image_id": 56,
+      "group": "original120"
     },
     {
       "image_id": 57,
@@ -3327,7 +3431,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:18-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:55-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:55-03:00",
+      "source_image_id": 57,
+      "group": "original120"
     },
     {
       "image_id": 58,
@@ -3385,7 +3491,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:22-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:33:56-03:00"
+      "normalization_revised_at": "2026-09-05T22:33:56-03:00",
+      "source_image_id": 58,
+      "group": "original120"
     },
     {
       "image_id": 59,
@@ -3445,7 +3553,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:38-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 59,
+      "group": "original120"
     },
     {
       "image_id": 60,
@@ -3505,7 +3615,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:39-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 60,
+      "group": "original120"
     },
     {
       "image_id": 61,
@@ -3563,7 +3675,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:31-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:00-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:00-03:00",
+      "source_image_id": 61,
+      "group": "original120"
     },
     {
       "image_id": 62,
@@ -3621,7 +3735,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:33-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:01-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:01-03:00",
+      "source_image_id": 62,
+      "group": "original120"
     },
     {
       "image_id": 63,
@@ -3679,7 +3795,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:35-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:02-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:02-03:00",
+      "source_image_id": 63,
+      "group": "original120"
     },
     {
       "image_id": 64,
@@ -3737,7 +3855,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:38-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:03-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:03-03:00",
+      "source_image_id": 64,
+      "group": "original120"
     },
     {
       "image_id": 65,
@@ -3797,7 +3917,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:40-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 65,
+      "group": "original120"
     },
     {
       "image_id": 66,
@@ -3855,7 +3977,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:44-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:05-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:05-03:00",
+      "source_image_id": 66,
+      "group": "original120"
     },
     {
       "image_id": 67,
@@ -3913,7 +4037,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:47-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:07-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:07-03:00",
+      "source_image_id": 67,
+      "group": "original120"
     },
     {
       "image_id": 68,
@@ -3971,7 +4097,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:49-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:08-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:08-03:00",
+      "source_image_id": 68,
+      "group": "original120"
     },
     {
       "image_id": 69,
@@ -4031,7 +4159,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:41-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 69,
+      "group": "original120"
     },
     {
       "image_id": 70,
@@ -4091,7 +4221,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:42-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 70,
+      "group": "original120"
     },
     {
       "image_id": 71,
@@ -4149,7 +4281,9 @@
       ],
       "retrieved_at": "2026-09-05T22:22:57-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:11-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:11-03:00",
+      "source_image_id": 71,
+      "group": "original120"
     },
     {
       "image_id": 72,
@@ -4207,7 +4341,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:00-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:12-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:12-03:00",
+      "source_image_id": 72,
+      "group": "original120"
     },
     {
       "image_id": 73,
@@ -4265,7 +4401,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:03-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:13-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:13-03:00",
+      "source_image_id": 73,
+      "group": "original120"
     },
     {
       "image_id": 74,
@@ -4325,7 +4463,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:43-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 74,
+      "group": "original120"
     },
     {
       "image_id": 75,
@@ -4385,7 +4525,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:44-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 75,
+      "group": "original120"
     },
     {
       "image_id": 76,
@@ -4443,7 +4585,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:11-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:17-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:17-03:00",
+      "source_image_id": 76,
+      "group": "original120"
     },
     {
       "image_id": 77,
@@ -4501,7 +4645,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:14-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:18-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:18-03:00",
+      "source_image_id": 77,
+      "group": "original120"
     },
     {
       "image_id": 78,
@@ -4559,7 +4705,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:16-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:19-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:19-03:00",
+      "source_image_id": 78,
+      "group": "original120"
     },
     {
       "image_id": 79,
@@ -4619,7 +4767,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:45-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 79,
+      "group": "original120"
     },
     {
       "image_id": 80,
@@ -4679,7 +4829,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:46-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 80,
+      "group": "original120"
     },
     {
       "image_id": 81,
@@ -4737,7 +4889,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:25-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:22-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:22-03:00",
+      "source_image_id": 81,
+      "group": "original120"
     },
     {
       "image_id": 82,
@@ -4795,7 +4949,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:27-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:24-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:24-03:00",
+      "source_image_id": 82,
+      "group": "original120"
     },
     {
       "image_id": 83,
@@ -4853,7 +5009,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:30-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:25-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:25-03:00",
+      "source_image_id": 83,
+      "group": "original120"
     },
     {
       "image_id": 84,
@@ -4913,7 +5071,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:48-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 84,
+      "group": "original120"
     },
     {
       "image_id": 85,
@@ -4971,7 +5131,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:36-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:27-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:27-03:00",
+      "source_image_id": 85,
+      "group": "original120"
     },
     {
       "image_id": 86,
@@ -5029,7 +5191,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:39-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:28-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:28-03:00",
+      "source_image_id": 86,
+      "group": "original120"
     },
     {
       "image_id": 87,
@@ -5087,7 +5251,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:41-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:29-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:29-03:00",
+      "source_image_id": 87,
+      "group": "original120"
     },
     {
       "image_id": 88,
@@ -5145,7 +5311,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:45-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:30-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:30-03:00",
+      "source_image_id": 88,
+      "group": "original120"
     },
     {
       "image_id": 89,
@@ -5205,7 +5373,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:49-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 89,
+      "group": "original120"
     },
     {
       "image_id": 90,
@@ -5265,7 +5435,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:50-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 90,
+      "group": "original120"
     },
     {
       "image_id": 91,
@@ -5323,7 +5495,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:54-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:34-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:34-03:00",
+      "source_image_id": 91,
+      "group": "original120"
     },
     {
       "image_id": 92,
@@ -5381,7 +5555,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:56-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:35-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:35-03:00",
+      "source_image_id": 92,
+      "group": "original120"
     },
     {
       "image_id": 93,
@@ -5439,7 +5615,9 @@
       ],
       "retrieved_at": "2026-09-05T22:23:59-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:36-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:36-03:00",
+      "source_image_id": 93,
+      "group": "original120"
     },
     {
       "image_id": 94,
@@ -5499,7 +5677,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:51-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 94,
+      "group": "original120"
     },
     {
       "image_id": 95,
@@ -5559,7 +5739,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:52-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 95,
+      "group": "original120"
     },
     {
       "image_id": 96,
@@ -5617,7 +5799,9 @@
       ],
       "retrieved_at": "2026-09-05T22:24:08-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:40-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:40-03:00",
+      "source_image_id": 96,
+      "group": "original120"
     },
     {
       "image_id": 97,
@@ -5675,7 +5859,9 @@
       ],
       "retrieved_at": "2026-09-05T22:24:10-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:41-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:41-03:00",
+      "source_image_id": 97,
+      "group": "original120"
     },
     {
       "image_id": 98,
@@ -5735,7 +5921,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:53-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 98,
+      "group": "original120"
     },
     {
       "image_id": 99,
@@ -5793,7 +5981,9 @@
       ],
       "retrieved_at": "2026-09-05T22:24:16-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:43-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:43-03:00",
+      "source_image_id": 99,
+      "group": "original120"
     },
     {
       "image_id": 100,
@@ -5853,7 +6043,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:54-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 100,
+      "group": "original120"
     },
     {
       "image_id": 101,
@@ -5911,7 +6103,9 @@
       ],
       "retrieved_at": "2026-09-05T22:24:21-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:45-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:45-03:00",
+      "source_image_id": 101,
+      "group": "original120"
     },
     {
       "image_id": 102,
@@ -5971,7 +6165,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:56-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 102,
+      "group": "original120"
     },
     {
       "image_id": 103,
@@ -6031,7 +6227,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:57-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 103,
+      "group": "original120"
     },
     {
       "image_id": 104,
@@ -6089,7 +6287,9 @@
       ],
       "retrieved_at": "2026-09-05T22:24:30-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:51-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:51-03:00",
+      "source_image_id": 104,
+      "group": "original120"
     },
     {
       "image_id": 105,
@@ -6149,7 +6349,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:58-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 105,
+      "group": "original120"
     },
     {
       "image_id": 106,
@@ -6207,7 +6409,9 @@
       ],
       "retrieved_at": "2026-09-05T22:24:37-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:53-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:53-03:00",
+      "source_image_id": 106,
+      "group": "original120"
     },
     {
       "image_id": 107,
@@ -6265,7 +6469,9 @@
       ],
       "retrieved_at": "2026-09-05T22:24:40-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:54-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:54-03:00",
+      "source_image_id": 107,
+      "group": "original120"
     },
     {
       "image_id": 108,
@@ -6323,7 +6529,9 @@
       ],
       "retrieved_at": "2026-09-05T22:24:42-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:55-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:55-03:00",
+      "source_image_id": 108,
+      "group": "original120"
     },
     {
       "image_id": 109,
@@ -6383,7 +6591,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:52:59-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 109,
+      "group": "original120"
     },
     {
       "image_id": 110,
@@ -6443,7 +6653,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:53:00-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 110,
+      "group": "original120"
     },
     {
       "image_id": 111,
@@ -6501,7 +6713,9 @@
       ],
       "retrieved_at": "2026-09-05T22:24:50-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:34:59-03:00"
+      "normalization_revised_at": "2026-09-05T22:34:59-03:00",
+      "source_image_id": 111,
+      "group": "original120"
     },
     {
       "image_id": 112,
@@ -6559,7 +6773,9 @@
       ],
       "retrieved_at": "2026-09-05T22:24:53-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:35:00-03:00"
+      "normalization_revised_at": "2026-09-05T22:35:00-03:00",
+      "source_image_id": 112,
+      "group": "original120"
     },
     {
       "image_id": 113,
@@ -6617,7 +6833,9 @@
       ],
       "retrieved_at": "2026-09-05T22:24:55-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:35:01-03:00"
+      "normalization_revised_at": "2026-09-05T22:35:01-03:00",
+      "source_image_id": 113,
+      "group": "original120"
     },
     {
       "image_id": 114,
@@ -6677,7 +6895,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:53:01-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 114,
+      "group": "original120"
     },
     {
       "image_id": 115,
@@ -6737,7 +6957,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:53:03-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 115,
+      "group": "original120"
     },
     {
       "image_id": 116,
@@ -6795,7 +7017,9 @@
       ],
       "retrieved_at": "2026-09-05T22:25:04-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:35:04-03:00"
+      "normalization_revised_at": "2026-09-05T22:35:04-03:00",
+      "source_image_id": 116,
+      "group": "original120"
     },
     {
       "image_id": 117,
@@ -6855,7 +7079,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:53:04-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 117,
+      "group": "original120"
     },
     {
       "image_id": 118,
@@ -6913,7 +7139,9 @@
       ],
       "retrieved_at": "2026-09-05T22:25:09-03:00",
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
-      "normalization_revised_at": "2026-09-05T22:35:07-03:00"
+      "normalization_revised_at": "2026-09-05T22:35:07-03:00",
+      "source_image_id": 118,
+      "group": "original120"
     },
     {
       "image_id": 119,
@@ -6973,7 +7201,9 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:53:05-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 119,
+      "group": "original120"
     },
     {
       "image_id": 120,
@@ -7033,7 +7263,589 @@
       "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
       "normalization_revised_at": "2026-09-05T22:53:06-03:00",
       "forced_source_resample": true,
-      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks"
+      "forced_source_resample_reason": "break the original JPEG DCT grid and avoid artificial same-quality recompression peaks",
+      "source_image_id": 120,
+      "group": "original120"
+    },
+    {
+      "image_id": 121,
+      "filename": "corpus-0121.ppm",
+      "pageid": 149694018,
+      "title": "File:Summer blue sky of Laoling city 2.jpg",
+      "description": "​乐陵夏日的蓝天 2",
+      "author": "Cartonfox",
+      "credit": "Own work",
+      "license": "CC0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Summer_blue_sky_of_Laoling_city_2.jpg",
+      "download_url": "https://upload.wikimedia.org/wikipedia/commons/8/86/Summer_blue_sky_of_Laoling_city_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "original_url": "https://upload.wikimedia.org/wikipedia/commons/8/86/Summer_blue_sky_of_Laoling_city_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "download_representation": "original",
+      "provider": "wikimedia_commons",
+      "category": "smooth_surfaces_gradients",
+      "category_label": "Smooth surfaces and gradients",
+      "query_index": 5,
+      "source_mime": "image/jpeg",
+      "source_is_jpeg": true,
+      "download_sha256": "083e6e6869b086ebee3b6854313d97e1aa5a178497c8f124ff033937954c4ac7",
+      "source_sha1_commons": "c4ebc8a660b8854f395a0f5b3af7d0befd5c1266",
+      "downloaded_bytes": 9210766,
+      "original_width": 4624,
+      "original_height": 3472,
+      "downloaded_width": 4624,
+      "downloaded_height": 3472,
+      "width": 640,
+      "height": 481,
+      "pixels": 307840,
+      "resolution_cap": 640,
+      "ppm_sha256": "fe56182fc730a812dbb621ad092c6d413bac1c84df6c8f083c475d44fb6bbe29",
+      "phash64": "d46667c1a96da1a9",
+      "nearest_prior_image": "corpus-0025.ppm",
+      "nearest_phash_distance": 24,
+      "conversion_argv": [
+        "convert",
+        "SOURCE[0]",
+        "-auto-orient",
+        "-colorspace",
+        "sRGB",
+        "-resize",
+        "640x640>",
+        "-background",
+        "white",
+        "-flatten",
+        "-strip",
+        "-depth",
+        "8",
+        "PPM:images/holdout-7.1.17-0001.ppm"
+      ],
+      "ppm_format": "P6 RGB 8-bit",
+      "retrieved_utc": "2026-09-23T17:03:17.539839+00:00",
+      "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+      "normalization_revised_utc": "2026-09-23T17:08:10.020001+00:00",
+      "source_image_id": 1,
+      "group": "new10"
+    },
+    {
+      "image_id": 122,
+      "filename": "corpus-0122.ppm",
+      "pageid": 122803635,
+      "title": "File:Gimnasio de usos múltiples, CDU.jpg",
+      "description": "Fachada posterior del gimnasio de usos múltiples del Complejo Deportivo Universitario",
+      "author": "SistemaRayoXP",
+      "credit": "Own work",
+      "license": "CC0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Gimnasio_de_usos_m%C3%BAltiples,_CDU.jpg",
+      "download_url": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Gimnasio_de_usos_m%C3%BAltiples%2C_CDU.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "original_url": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Gimnasio_de_usos_m%C3%BAltiples%2C_CDU.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "download_representation": "original",
+      "provider": "wikimedia_commons",
+      "category": "urban_architecture",
+      "category_label": "Urban scenes and architecture",
+      "query_index": 3,
+      "source_mime": "image/jpeg",
+      "source_is_jpeg": true,
+      "download_sha256": "c7f0f3ce1d977abc790cf2919ec0b54bd0f4542bbeb8a17ae4cfbdb34dcb3056",
+      "source_sha1_commons": "a2ecf1556076ed7b9f255df147cf5c8baef3d29d",
+      "downloaded_bytes": 2866775,
+      "original_width": 4000,
+      "original_height": 3000,
+      "downloaded_width": 4000,
+      "downloaded_height": 3000,
+      "width": 512,
+      "height": 384,
+      "pixels": 196608,
+      "resolution_cap": 512,
+      "ppm_sha256": "d9e8038aa487e04493f1d547ad232df401125ed4cd473a18971248f19c41c6fa",
+      "phash64": "036afcd1019eff41",
+      "nearest_prior_image": "corpus-0038.ppm",
+      "nearest_phash_distance": 22,
+      "conversion_argv": [
+        "convert",
+        "SOURCE[0]",
+        "-auto-orient",
+        "-colorspace",
+        "sRGB",
+        "-resize",
+        "512x512>",
+        "-background",
+        "white",
+        "-flatten",
+        "-strip",
+        "-depth",
+        "8",
+        "PPM:images/holdout-7.1.17-0002.ppm"
+      ],
+      "ppm_format": "P6 RGB 8-bit",
+      "retrieved_utc": "2026-09-23T17:03:18.728315+00:00",
+      "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+      "normalization_revised_utc": "2026-09-23T17:08:10.020001+00:00",
+      "source_image_id": 2,
+      "group": "new10"
+    },
+    {
+      "image_id": 123,
+      "filename": "corpus-0123.ppm",
+      "pageid": 97228331,
+      "title": "File:2456Clouds and blue sky in Hagonoy and Paombong river 36.jpg",
+      "description": "Clouds and blue sky in Hagonoy and Paombong river districts (San Isidro II - San Pedro and Santa Elena)",
+      "author": "Judgefloro",
+      "credit": "Own work",
+      "license": "CC0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:2456Clouds_and_blue_sky_in_Hagonoy_and_Paombong_river_36.jpg",
+      "download_url": "https://upload.wikimedia.org/wikipedia/commons/5/5f/2456Clouds_and_blue_sky_in_Hagonoy_and_Paombong_river_36.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "original_url": "https://upload.wikimedia.org/wikipedia/commons/5/5f/2456Clouds_and_blue_sky_in_Hagonoy_and_Paombong_river_36.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "download_representation": "original",
+      "provider": "wikimedia_commons",
+      "category": "smooth_surfaces_gradients",
+      "category_label": "Smooth surfaces and gradients",
+      "query_index": 5,
+      "source_mime": "image/jpeg",
+      "source_is_jpeg": true,
+      "download_sha256": "da8568bf2b668494a26aee758956420fa51185558d6f656408502fd395b4d766",
+      "source_sha1_commons": "58a44092389cf147888c7b237a6d1c0796988552",
+      "downloaded_bytes": 6686917,
+      "original_width": 4608,
+      "original_height": 3456,
+      "downloaded_width": 4608,
+      "downloaded_height": 3456,
+      "width": 800,
+      "height": 600,
+      "pixels": 480000,
+      "resolution_cap": 800,
+      "ppm_sha256": "816c73b8c191d12f2f8b2d6a3c62b0d4124cc7b4270be4762e74f7157b180bb4",
+      "phash64": "b43f4b00947bfb03",
+      "nearest_prior_image": "corpus-0022.ppm",
+      "nearest_phash_distance": 20,
+      "conversion_argv": [
+        "convert",
+        "SOURCE[0]",
+        "-auto-orient",
+        "-colorspace",
+        "sRGB",
+        "-resize",
+        "800x800>",
+        "-background",
+        "white",
+        "-flatten",
+        "-strip",
+        "-depth",
+        "8",
+        "PPM:images/holdout-7.1.17-0003.ppm"
+      ],
+      "ppm_format": "P6 RGB 8-bit",
+      "retrieved_utc": "2026-09-23T17:03:19.990485+00:00",
+      "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+      "normalization_revised_utc": "2026-09-23T17:08:10.020001+00:00",
+      "source_image_id": 3,
+      "group": "new10"
+    },
+    {
+      "image_id": 124,
+      "filename": "corpus-0124.ppm",
+      "pageid": 146990772,
+      "title": "File:Façade est de l'église de Volesvres.jpg",
+      "description": "The eastward façade of the Church Saint-Jean-Baptiste of Volesvres, with a door, two buttresses and a rose window.",
+      "author": "DrGrototo",
+      "credit": "Own work",
+      "license": "CC0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Fa%C3%A7ade_est_de_l%27%C3%A9glise_de_Volesvres.jpg",
+      "download_url": "https://upload.wikimedia.org/wikipedia/commons/f/f3/Fa%C3%A7ade_est_de_l%27%C3%A9glise_de_Volesvres.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "original_url": "https://upload.wikimedia.org/wikipedia/commons/f/f3/Fa%C3%A7ade_est_de_l%27%C3%A9glise_de_Volesvres.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "download_representation": "original",
+      "provider": "wikimedia_commons",
+      "category": "urban_architecture",
+      "category_label": "Urban scenes and architecture",
+      "query_index": 3,
+      "source_mime": "image/jpeg",
+      "source_is_jpeg": true,
+      "download_sha256": "d53a7faa29f7b2a81462a7d86c5a5278551e93b2c6457b6d3da1c82c79a0c0b6",
+      "source_sha1_commons": "5fabaade2d850f76877c6800621068d067ddbbec",
+      "downloaded_bytes": 1069143,
+      "original_width": 3390,
+      "original_height": 5136,
+      "downloaded_width": 3390,
+      "downloaded_height": 5136,
+      "width": 338,
+      "height": 512,
+      "pixels": 173056,
+      "resolution_cap": 512,
+      "ppm_sha256": "7ce22df2f41cb4b7ef842211109edaeb5781b11dceced0c04ee4bf68a4ce5d78",
+      "phash64": "4e59a83164763fc9",
+      "nearest_prior_image": "corpus-0038.ppm",
+      "nearest_phash_distance": 20,
+      "conversion_argv": [
+        "convert",
+        "SOURCE[0]",
+        "-auto-orient",
+        "-colorspace",
+        "sRGB",
+        "-resize",
+        "512x512>",
+        "-background",
+        "white",
+        "-flatten",
+        "-strip",
+        "-depth",
+        "8",
+        "PPM:images/holdout-7.1.17-0004.ppm"
+      ],
+      "ppm_format": "P6 RGB 8-bit",
+      "retrieved_utc": "2026-09-23T17:03:21.242247+00:00",
+      "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+      "normalization_revised_utc": "2026-09-23T17:08:10.020001+00:00",
+      "source_image_id": 4,
+      "group": "new10"
+    },
+    {
+      "image_id": 125,
+      "filename": "corpus-0125.ppm",
+      "pageid": 149260616,
+      "title": "File:Old English Wild Flowers upper endpaper and pastedown.jpg",
+      "description": "Shelfmark: C.188.a.563. Artist/ Cover designer: Author: Burgess, Joseph Tom Title: Old English Wild Flowers to be found by the wayside, fields, hedgerows, rivers, moorlands, meadows, mountains, and sea-shore ... With numerous illustrations. Description Style [subjects] English flowers; floral; Medium / Decorative Technique: printed in colours Place of Creation - Publisher: London - Printer - Binder Object History Text [Date and publisher name]: 1868 ; London: Frederick Warne & Co., Bedford Street, Strand. Notes. x,181p., 1 plate. Book dimension: 110x166x13mm. Pink dyed paper over boards. Both sets of endpapers and pastedowns have lists of publisher’s titles. Robin de Beaumont’s notes are written on the front endpaper verso. The lower cover has titles in the series: “Useful Books for country and Seaside.” The upper cover features flowers, printed in green, red, and pink; these surround a ‘vase’, which has the title printed within it. At the head of the upper cover: “Warne’s Useful Books",
+      "author": "Southwold1966",
+      "credit": "Own work",
+      "license": "CC0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Old_English_Wild_Flowers_upper_endpaper_and_pastedown.jpg",
+      "download_url": "https://upload.wikimedia.org/wikipedia/commons/c/cf/Old_English_Wild_Flowers_upper_endpaper_and_pastedown.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "original_url": "https://upload.wikimedia.org/wikipedia/commons/c/cf/Old_English_Wild_Flowers_upper_endpaper_and_pastedown.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "download_representation": "original",
+      "provider": "wikimedia_commons",
+      "category": "fine_detail",
+      "category_label": "Fine detail",
+      "query_index": 6,
+      "source_mime": "image/jpeg",
+      "source_is_jpeg": true,
+      "download_sha256": "1185e302bb5ffc8fb13c11a00c51cfd63ad10ec0d991a70a66ca7facb655ba21",
+      "source_sha1_commons": "526e9b74208624e07753e17b8fb7368883fa7411",
+      "downloaded_bytes": 2693421,
+      "original_width": 2990,
+      "original_height": 2325,
+      "downloaded_width": 2990,
+      "downloaded_height": 2325,
+      "width": 1024,
+      "height": 796,
+      "pixels": 815104,
+      "resolution_cap": 1024,
+      "ppm_sha256": "c29b864a61c09b8c2f7f1b530998d466fe5a91d6f384cd4941236c1012d515d4",
+      "phash64": "666c4bccf3460937",
+      "nearest_prior_image": "corpus-0039.ppm",
+      "nearest_phash_distance": 22,
+      "conversion_argv": [
+        "convert",
+        "SOURCE[0]",
+        "-auto-orient",
+        "-colorspace",
+        "sRGB",
+        "-resize",
+        "1024x1024>",
+        "-background",
+        "white",
+        "-flatten",
+        "-strip",
+        "-depth",
+        "8",
+        "PPM:images/holdout-7.1.17-0005.ppm"
+      ],
+      "ppm_format": "P6 RGB 8-bit",
+      "retrieved_utc": "2026-09-23T17:03:22.404844+00:00",
+      "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+      "normalization_revised_utc": "2026-09-23T17:08:10.020001+00:00",
+      "source_image_id": 5,
+      "group": "new10"
+    },
+    {
+      "image_id": 126,
+      "filename": "corpus-0126.ppm",
+      "pageid": 177451395,
+      "title": "File:Mountain landscape in kerala.jpg",
+      "description": "Mountain landscape in kerala",
+      "author": "Karthika Manikandan",
+      "credit": "Own work",
+      "license": "CC0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Mountain_landscape_in_kerala.jpg",
+      "download_url": "https://upload.wikimedia.org/wikipedia/commons/f/fb/Mountain_landscape_in_kerala.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "original_url": "https://upload.wikimedia.org/wikipedia/commons/f/fb/Mountain_landscape_in_kerala.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "download_representation": "original",
+      "provider": "wikimedia_commons",
+      "category": "natural_landscapes",
+      "category_label": "Natural landscapes",
+      "query_index": 2,
+      "source_mime": "image/jpeg",
+      "source_is_jpeg": true,
+      "download_sha256": "119219e49dfb3242a605767bf0d8d71c40abb0bff0004c03d500ab11fa9b5894",
+      "source_sha1_commons": "4e9fd44729f00871c11eebb2e50d72ed87fc0f93",
+      "downloaded_bytes": 125490,
+      "original_width": 1280,
+      "original_height": 960,
+      "downloaded_width": 1280,
+      "downloaded_height": 960,
+      "width": 1152,
+      "height": 864,
+      "pixels": 995328,
+      "resolution_cap": 1152,
+      "ppm_sha256": "8c43b40284d2dfdcde8326a7aadda9b754c95eb391ab4a75969501965c148539",
+      "phash64": "3c0fa3d1204f0f9f",
+      "nearest_prior_image": "corpus-0043.ppm",
+      "nearest_phash_distance": 22,
+      "conversion_argv": [
+        "convert",
+        "SOURCE[0]",
+        "-auto-orient",
+        "-colorspace",
+        "sRGB",
+        "-resize",
+        "1152x1152>",
+        "-background",
+        "white",
+        "-flatten",
+        "-strip",
+        "-depth",
+        "8",
+        "PPM:images/holdout-7.1.17-0006.ppm"
+      ],
+      "ppm_format": "P6 RGB 8-bit",
+      "retrieved_utc": "2026-09-23T17:03:23.492398+00:00",
+      "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+      "normalization_revised_utc": "2026-09-23T17:08:10.020001+00:00",
+      "source_image_id": 6,
+      "group": "new10"
+    },
+    {
+      "image_id": 127,
+      "filename": "corpus-0127.ppm",
+      "pageid": 165850084,
+      "title": "File:Façade of St. Comgall's Church.jpg",
+      "description": "Façade of St. Comgall's Church",
+      "author": "HenryPho17",
+      "credit": "Own work",
+      "license": "CC0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Fa%C3%A7ade_of_St._Comgall%27s_Church.jpg",
+      "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/0/07/Fa%C3%A7ade_of_St._Comgall%27s_Church.jpg/1280px-Fa%C3%A7ade_of_St._Comgall%27s_Church.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "original_url": "https://upload.wikimedia.org/wikipedia/commons/0/07/Fa%C3%A7ade_of_St._Comgall%27s_Church.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "download_representation": "official_thumbnail_width_1280",
+      "provider": "wikimedia_commons",
+      "category": "urban_architecture",
+      "category_label": "Urban scenes and architecture",
+      "query_index": 3,
+      "source_mime": "image/jpeg",
+      "source_is_jpeg": true,
+      "download_sha256": "5c8d50ccbb8581cb4bd0883aa43195b375faa8f2397ff4b99beb0402dd07b165",
+      "source_sha1_commons": "d28a562324f0f233997dc843c060a9ab034ff85c",
+      "downloaded_bytes": 596159,
+      "original_width": 2268,
+      "original_height": 4032,
+      "downloaded_width": 1280,
+      "downloaded_height": 2276,
+      "width": 720,
+      "height": 1280,
+      "pixels": 921600,
+      "resolution_cap": 1280,
+      "ppm_sha256": "59003716bb8ba3c59ce9fb707e1311e359bcffce8c1b889297415a253e5f1b3a",
+      "phash64": "56e5a81f5a81a56d",
+      "nearest_prior_image": "corpus-0017.ppm",
+      "nearest_phash_distance": 18,
+      "conversion_argv": [
+        "convert",
+        "SOURCE[0]",
+        "-auto-orient",
+        "-colorspace",
+        "sRGB",
+        "-resize",
+        "1280x1280>",
+        "-background",
+        "white",
+        "-flatten",
+        "-strip",
+        "-depth",
+        "8",
+        "PPM:images/holdout-7.1.17-0007.ppm"
+      ],
+      "ppm_format": "P6 RGB 8-bit",
+      "retrieved_utc": "2026-09-23T17:03:26.364562+00:00",
+      "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+      "normalization_revised_utc": "2026-09-23T17:08:10.020001+00:00",
+      "source_image_id": 7,
+      "group": "new10"
+    },
+    {
+      "image_id": 128,
+      "filename": "corpus-0128.ppm",
+      "pageid": 75518160,
+      "title": "File:Plaque en hommage à Maurice Flandin et plaque de la rue Maurice Flandin, à Lyon France.jpg",
+      "description": "Plaque en hommage à Maurice Flandin et plaque de la rue Maurice Flandin, à Lyon France.",
+      "author": "Benoît Prieur",
+      "credit": "Own work",
+      "license": "CC0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Plaque_en_hommage_%C3%A0_Maurice_Flandin_et_plaque_de_la_rue_Maurice_Flandin,_%C3%A0_Lyon_France.jpg",
+      "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c3/Plaque_en_hommage_%C3%A0_Maurice_Flandin_et_plaque_de_la_rue_Maurice_Flandin%2C_%C3%A0_Lyon_France.jpg/1280px-Plaque_en_hommage_%C3%A0_Maurice_Flandin_et_plaque_de_la_rue_Maurice_Flandin%2C_%C3%A0_Lyon_France.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "original_url": "https://upload.wikimedia.org/wikipedia/commons/c/c3/Plaque_en_hommage_%C3%A0_Maurice_Flandin_et_plaque_de_la_rue_Maurice_Flandin%2C_%C3%A0_Lyon_France.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "download_representation": "official_thumbnail_width_1280",
+      "provider": "wikimedia_commons",
+      "category": "text_sharp_edges",
+      "category_label": "Text and sharp edges",
+      "query_index": 7,
+      "source_mime": "image/jpeg",
+      "source_is_jpeg": true,
+      "download_sha256": "f3ff69ead47b0ef58ab3a9b9e27f4ba5dce0591aa9a796573e70a36a51e2386c",
+      "source_sha1_commons": "4b592204ce708c79e0a7080bb5c83a39c4e61f5c",
+      "downloaded_bytes": 526825,
+      "original_width": 1808,
+      "original_height": 2536,
+      "downloaded_width": 1280,
+      "downloaded_height": 1795,
+      "width": 730,
+      "height": 1024,
+      "pixels": 747520,
+      "resolution_cap": 1024,
+      "ppm_sha256": "8d057abc33f3e482efb6e83099b05ae4c1dacbffa04fbd321475958fb2308e06",
+      "phash64": "f4a14937fc0b035d",
+      "nearest_prior_image": "corpus-0039.ppm",
+      "nearest_phash_distance": 18,
+      "conversion_argv": [
+        "convert",
+        "SOURCE[0]",
+        "-auto-orient",
+        "-colorspace",
+        "sRGB",
+        "-resize",
+        "1024x1024>",
+        "-background",
+        "white",
+        "-flatten",
+        "-strip",
+        "-depth",
+        "8",
+        "PPM:images/holdout-7.1.17-0008.ppm"
+      ],
+      "ppm_format": "P6 RGB 8-bit",
+      "retrieved_utc": "2026-09-23T17:03:28.984656+00:00",
+      "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+      "normalization_revised_utc": "2026-09-23T17:08:10.020001+00:00",
+      "source_image_id": 8,
+      "group": "new10"
+    },
+    {
+      "image_id": 129,
+      "filename": "corpus-0129.ppm",
+      "pageid": 77160814,
+      "title": "File:Plaque de cocher, rue de Saint-Cyr à Lyon en février 2019.jpg",
+      "description": "Plaque de cocher, rue de Saint-Cyr à Lyon en février 2019. recto in engraving : RHONE CH.GR.COM N 21 LE PAVILLON FAYOLLE LYON QUAI JAIR 3K3 ST CYR-AU-MONT-D-OR 1K6",
+      "author": "Benoît Prieur",
+      "credit": "Own work",
+      "license": "CC0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:Plaque_de_cocher,_rue_de_Saint-Cyr_%C3%A0_Lyon_en_f%C3%A9vrier_2019.jpg",
+      "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/73/Plaque_de_cocher%2C_rue_de_Saint-Cyr_%C3%A0_Lyon_en_f%C3%A9vrier_2019.jpg/1280px-Plaque_de_cocher%2C_rue_de_Saint-Cyr_%C3%A0_Lyon_en_f%C3%A9vrier_2019.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "original_url": "https://upload.wikimedia.org/wikipedia/commons/7/73/Plaque_de_cocher%2C_rue_de_Saint-Cyr_%C3%A0_Lyon_en_f%C3%A9vrier_2019.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "download_representation": "official_thumbnail_width_1280",
+      "provider": "wikimedia_commons",
+      "category": "text_sharp_edges",
+      "category_label": "Text and sharp edges",
+      "query_index": 7,
+      "source_mime": "image/jpeg",
+      "source_is_jpeg": true,
+      "download_sha256": "8a8899006922803710659360a179a869bdee2aaa6bcea4cb76e77d312a8f984f",
+      "source_sha1_commons": "69caf2106f9c560dfb3fc31ef70e0dded4be88ec",
+      "downloaded_bytes": 602544,
+      "original_width": 2573,
+      "original_height": 1959,
+      "downloaded_width": 1280,
+      "downloaded_height": 975,
+      "width": 800,
+      "height": 609,
+      "pixels": 487200,
+      "resolution_cap": 800,
+      "ppm_sha256": "d35822ae83180bb5db91fe2c95a15e5af94f1f247f456be07570bbcacc049883",
+      "phash64": "540bf481a0ab2bff",
+      "nearest_prior_image": "corpus-0043.ppm",
+      "nearest_phash_distance": 18,
+      "conversion_argv": [
+        "convert",
+        "SOURCE[0]",
+        "-auto-orient",
+        "-colorspace",
+        "sRGB",
+        "-resize",
+        "800x800>",
+        "-background",
+        "white",
+        "-flatten",
+        "-strip",
+        "-depth",
+        "8",
+        "PPM:images/holdout-7.1.17-0009.ppm"
+      ],
+      "ppm_format": "P6 RGB 8-bit",
+      "retrieved_utc": "2026-09-23T17:03:31.615326+00:00",
+      "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+      "normalization_revised_utc": "2026-09-23T17:08:10.020001+00:00",
+      "source_image_id": 9,
+      "group": "new10"
+    },
+    {
+      "image_id": 130,
+      "filename": "corpus-0130.ppm",
+      "pageid": 60861532,
+      "title": "File:River Landscape with Mountain Stream MET DP800787.jpg",
+      "description": "Drawing; Drawings",
+      "author": "Antonie Waterloo",
+      "credit": "This file was donated to Wikimedia Commons as part of a project by the Metropolitan Museum of Art . See the Image and Data Resources Open Access Policy",
+      "license": "CC0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source_page_url": "https://commons.wikimedia.org/wiki/File:River_Landscape_with_Mountain_Stream_MET_DP800787.jpg",
+      "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/8/88/River_Landscape_with_Mountain_Stream_MET_DP800787.jpg/1280px-River_Landscape_with_Mountain_Stream_MET_DP800787.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+      "original_url": "https://upload.wikimedia.org/wikipedia/commons/8/88/River_Landscape_with_Mountain_Stream_MET_DP800787.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+      "download_representation": "official_thumbnail_width_1280",
+      "provider": "wikimedia_commons",
+      "category": "natural_landscapes",
+      "category_label": "Natural landscapes",
+      "query_index": 2,
+      "source_mime": "image/jpeg",
+      "source_is_jpeg": true,
+      "download_sha256": "c33a6fd872daad9e08367134bee3b74ef80cac00ba7b61276215a9816cdece2a",
+      "source_sha1_commons": "7ea5cdf53cacd138504c25ec14a162463c6d84db",
+      "downloaded_bytes": 819011,
+      "original_width": 2889,
+      "original_height": 3609,
+      "downloaded_width": 1280,
+      "downloaded_height": 1599,
+      "width": 512,
+      "height": 640,
+      "pixels": 327680,
+      "resolution_cap": 640,
+      "ppm_sha256": "9e4f209508cbdbf1b754566e4a3c83e3a8e3ecdab3752bd5bd6fa8d9994f844e",
+      "phash64": "24635acf83f436d1",
+      "nearest_prior_image": "corpus-0111.ppm",
+      "nearest_phash_distance": 20,
+      "conversion_argv": [
+        "convert",
+        "SOURCE[0]",
+        "-auto-orient",
+        "-colorspace",
+        "sRGB",
+        "-resize",
+        "640x640>",
+        "-background",
+        "white",
+        "-flatten",
+        "-strip",
+        "-depth",
+        "8",
+        "PPM:images/holdout-7.1.17-0010.ppm"
+      ],
+      "ppm_format": "P6 RGB 8-bit",
+      "retrieved_utc": "2026-09-23T17:03:34.723040+00:00",
+      "normalization_converter": "Version: ImageMagick 6.9.12-98 Q16 x86_64 18038 https://legacy.imagemagick.org",
+      "normalization_revised_utc": "2026-09-23T17:08:10.020001+00:00",
+      "source_image_id": 10,
+      "group": "new10"
     }
   ]
 }

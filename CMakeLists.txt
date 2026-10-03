@@ -3,7 +3,8 @@
 
 cmake_minimum_required(VERSION 3.16)
 
-project(n148i VERSION 1.0.0 LANGUAGES C)
+# V2 is the product name; CMake requires a numeric package/ABI version.
+project(n148i VERSION 2.0.0 LANGUAGES C)
 
 include(CTest)
 include(GNUInstallDirs)
@@ -22,6 +23,20 @@ set(N148I_SOURCES
     src/cpu.c
     src/parallel.c
     src/huffman.c
+    src/rans.c
+    src/intra.c
+    src/perceptual.c
+    src/adaptive_quant.c
+    src/segmentation.c
+    src/variable_transform.c
+    src/rdo.c
+    src/loop_filter.c
+    src/directional_intra.c
+    src/entropy_payload.c
+    src/chroma_profile.c
+    src/luma_profile.c
+    src/fidelity_profile.c
+    src/entropy_profile.c
     src/encoder.c
     src/decoder.c)
 
@@ -56,7 +71,7 @@ function(n148i_configure_library target)
     endif()
 
     if(WIN32)
-        # v1 uses pthreads on POSIX. The Windows library keeps the same codec
+        # The codec uses pthreads on POSIX. The Windows library keeps the same
         # behavior through the tested single-thread fallback.
         target_compile_definitions(${target} PRIVATE N148_NO_THREADS)
     else()
@@ -110,6 +125,26 @@ if(N148I_BUILD_EXAMPLE)
     target_link_libraries(n148i_memory_roundtrip PRIVATE n148i_static)
     if(BUILD_TESTING)
         add_test(NAME n148i.memory_roundtrip COMMAND n148i_memory_roundtrip)
+    endif()
+    add_executable(n148i_shared_roundtrip examples/memory_roundtrip.c)
+    target_link_libraries(n148i_shared_roundtrip PRIVATE n148i_shared)
+    if(BUILD_TESTING)
+        add_test(NAME n148i.shared_roundtrip COMMAND n148i_shared_roundtrip)
+        if(WIN32)
+            add_custom_command(TARGET n148i_shared_roundtrip POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_FILE:n148i_shared>
+                    $<TARGET_FILE_DIR:n148i_shared_roundtrip>)
+        endif()
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            # Exercise the default MSVC stack limit for both library variants.
+            foreach(linkage IN ITEMS memory shared)
+                add_test(NAME n148i.${linkage}_roundtrip_small_stack
+                    COMMAND /bin/sh -c
+                        "ulimit -c 0 && ulimit -s 1024 && exec \"$0\""
+                        $<TARGET_FILE:n148i_${linkage}_roundtrip>)
+            endforeach()
+        endif()
     endif()
 endif()
 

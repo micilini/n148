@@ -1,10 +1,11 @@
 /*
- * In-memory final benchmark driver for N.148i, libjpeg-turbo and JPEG XL.
+ * In-memory final benchmark driver for N.148i, libjpeg-turbo, JPEG XL,
+ * and WebP.
  *
  * Copyright (c) Micilini Roll. Licensed under the MIT License.
  *
  * This file is measurement-only instrumentation.  It deliberately calls the
- * three codec libraries directly, keeps disk I/O outside timed regions, uses
+ * codec libraries directly, keeps disk I/O outside timed regions, uses
  * persistent worker pools, alternates codec order, and emits every timing
  * sample so the statistical analysis is independently reproducible.
  */
@@ -15,9 +16,13 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <jpeglib.h>
+#ifndef N148_BENCH_NO_JXL
 #include <jxl/decode.h>
 #include <jxl/encode.h>
 #include <jxl/thread_parallel_runner.h>
+#endif
+#include <webp/decode.h>
+#include <webp/encode.h>
 #include <limits.h>
 #include <math.h>
 #if defined(__linux__)
@@ -29,36 +34,51 @@
 #include <string.h>
 #include <time.h>
 
-#include "decoder.h"
-#include "encoder.h"
-#include "header.h"
-#include "huffman.h"
-#include "parallel.h"
+#include "n148i.h"
 #include "ppm.h"
 
+/* Compile this same timing harness against the frozen public V1 library.
+   Its options structure ends at thread_count. No V2 compatibility path is
+   used for the V1 benchmark. */
+#ifdef N148_BENCH_V1
+#define N148I_FORMAT_VERSION_1 1
+#define N148I_DEFAULT_FEATURES 0u
+#endif
+
 enum {
-    CODEC_N148 = 0,
-    CODEC_JPEG = 1,
-    CODEC_JXL_E3 = 2,
-    CODEC_JXL_E7 = 3,
-    CODEC_COUNT = 4
+    CODEC_N148_CURRENT = 0,
+    CODEC_N148_FORMAT_1 = 1,
+    CODEC_JPEG = 2,
+    CODEC_WEBP_M4 = 3,
+    CODEC_WEBP_M6 = 4,
+    CODEC_JXL_E3 = 5,
+    CODEC_JXL_E7 = 6,
+    CODEC_COUNT = 7
 };
 
 static const char *const CODEC_NAMES[CODEC_COUNT] = {
-    "n148i", "jpeg", "jxl_e3", "jxl_e7"
+    "n148i", "n148i_format_1", "jpeg", "webp_m4", "webp_m6",
+    "jxl_e3", "jxl_e7"
 };
+
+#define ALL_CODEC_MASK ((1u << CODEC_COUNT) - 1u)
 
 typedef struct {
     const char *input;
     const char *output_prefix;
     int n148_quality;
+    int n148_chroma_quality;
+    int n148_effort;
+    uint32_t n148_feature_flags;
     int jpeg_quality;
+    float webp_quality;
     float jxl_distance;
     int reps;
     int warmups;
     int chroma;
     int n148_threads;
     int jxl_threads;
+    int webp_thread_level;
     int jpeg_cpu;
     double sample_ms;
     unsigned active_mask;
@@ -67,8 +87,6 @@ typedef struct {
 typedef struct {
     unsigned char *compressed;
     size_t compressed_size;
-    size_t payload_size;
-    HuffSpec specs[HUFFMAN_TABLE_COUNT];
     unsigned char *decoded;
     int width;
     int height;
@@ -132,163 +150,78 @@ static void jpeg_error_exit(j_common_ptr common) {
     longjmp(error->jump, 1);
 }
 
-static void free_state(CodecState *state) {
-    free(state->compressed);
-    free(state->decoded);
+static int is_public_n148(int codec) {
+    return codec == CODEC_N148_CURRENT || codec == CODEC_N148_FORMAT_1;
+}
+
+static void free_state(int codec, CodecState *state) {
+    if (is_public_n148(codec)) {
+        n148i_free_buffer(state->compressed);
+        n148i_free_buffer(state->decoded);
+    } else {
+        free(state->compressed);
+        free(state->decoded);
+    }
     memset(state, 0, sizeof(*state));
 }
 
-static void memory_write_u32(unsigned char *destination, uint32_t value) {
-    destination[0] = (unsigned char) (value & 0xffu);
-    destination[1] = (unsigned char) ((value >> 8) & 0xffu);
-    destination[2] = (unsigned char) ((value >> 16) & 0xffu);
-    destination[3] = (unsigned char) ((value >> 24) & 0xffu);
-}
-
-static uint32_t memory_read_u32(const unsigned char *source) {
-    return (uint32_t) source[0] |
-        ((uint32_t) source[1] << 8) |
-        ((uint32_t) source[2] << 16) |
-        ((uint32_t) source[3] << 24);
-}
-
 static int n148_encode_once(const Image *image, const Options *options,
-                            CodecState *state) {
-    Plane y = {0}, cb = {0}, cr = {0};
-    EncodeStats stats;
-    unsigned char *payload = NULL;
-    HuffSpec specs[HUFFMAN_TABLE_COUNT];
-    int ok = split_channels((Image *) image, &y, &cb, &cr, options->chroma);
-    if (ok) {
-        ok = encode_image(&y, &cb, &cr, options->n148_quality, 1, specs,
-                          &payload, &stats);
-    }
-    free_plane(&y);
-    free_plane(&cb);
-    free_plane(&cr);
-    if (!ok) {
-        free(payload);
-        return 0;
-    }
+                            uint32_t format_version, CodecState *state) {
+    n148i_image_t source = {
+        image->pixels,
+        (uint32_t) image->width,
+        (uint32_t) image->height,
+        (size_t) image->width * 3u,
+    };
+    n148i_encode_options_t settings;
+    n148i_encode_options_init(&settings);
+    settings.quality = options->n148_quality;
+    settings.chroma = (n148i_chroma_t) options->chroma;
+    settings.optimize_huffman = 1;
+    settings.thread_count = options->n148_threads;
+#ifndef N148_BENCH_V1
+    settings.format_version = format_version;
+    settings.feature_flags = format_version == N148I_FORMAT_VERSION_1 ?
+        0u : options->n148_feature_flags;
+    settings.effort = format_version == N148I_FORMAT_VERSION_1 ?
+        0 : options->n148_effort;
+    settings.chroma_quality = format_version == N148I_FORMAT_VERSION_1 ?
+        0 : options->n148_chroma_quality;
+#else
+    (void)format_version;
+#endif
 
-    if (stats.data_size <= 0 || stats.data_size > UINT32_MAX ||
-        stats.table_size < 0 ||
-        (size_t) stats.table_size > SIZE_MAX - N148I_HEADER_SIZE ||
-        (size_t) stats.data_size >
-            SIZE_MAX - N148I_HEADER_SIZE - (size_t) stats.table_size) {
-        free(payload);
+    uint8_t *compressed = NULL;
+    size_t compressed_size = 0;
+    if (n148i_encode_memory(&source, &settings, &compressed,
+                            &compressed_size) != N148I_OK) {
+        n148i_free_buffer(compressed);
         return 0;
     }
-    size_t complete_size = (size_t) N148I_HEADER_SIZE +
-        (size_t) stats.table_size + (size_t) stats.data_size;
-    unsigned char *complete = (unsigned char *) malloc(complete_size);
-    if (!complete) {
-        free(payload);
-        return 0;
-    }
-
-    memcpy(complete, N148I_MAGIC, N148I_MAGIC_LEN);
-    complete[5] = N148I_VERSION;
-    memory_write_u32(complete + 6, (uint32_t) image->width);
-    memory_write_u32(complete + 10, (uint32_t) image->height);
-    complete[14] = (unsigned char) options->n148_quality;
-    complete[15] = (unsigned char) options->chroma;
-    complete[16] = 1;
-    memory_write_u32(complete + 17, (uint32_t) stats.data_size);
-    size_t offset = N148I_HEADER_SIZE;
-    for (int table = 0; table < HUFFMAN_TABLE_COUNT; table++) {
-        if (!huffman_spec_is_valid(&specs[table])) {
-            free(payload);
-            free(complete);
-            return 0;
-        }
-        for (int length = 1; length <= 16; length++)
-            complete[offset++] = (unsigned char) specs[table].bits[length];
-        memcpy(complete + offset, specs[table].values,
-               (size_t) specs[table].value_count);
-        offset += (size_t) specs[table].value_count;
-    }
-    if (offset != N148I_HEADER_SIZE + (size_t) stats.table_size) {
-        free(payload);
-        free(complete);
-        return 0;
-    }
-    memcpy(complete + offset, payload, (size_t) stats.data_size);
-    free(payload);
-
-    free(state->compressed);
-    state->compressed = complete;
-    state->payload_size = (size_t) stats.data_size;
-    state->compressed_size = complete_size;
-    memcpy(state->specs, specs, sizeof(specs));
+    n148i_free_buffer(state->compressed);
+    state->compressed = compressed;
+    state->compressed_size = compressed_size;
     return 1;
 }
 
-static int n148_decode_once(const Options *options, CodecState *state) {
-    Plane y = {0}, cb = {0}, cr = {0};
-    DecodeStats stats;
-    Image image = {0};
-    (void) options;
-    if (!state->compressed || state->compressed_size < N148I_HEADER_SIZE ||
-        memcmp(state->compressed, N148I_MAGIC, N148I_MAGIC_LEN) != 0 ||
-        state->compressed[5] != N148I_VERSION ||
-        memory_read_u32(state->compressed + 6) != (uint32_t) state->width ||
-        memory_read_u32(state->compressed + 10) != (uint32_t) state->height ||
-        state->compressed[14] < 1 || state->compressed[14] > 100 ||
-        state->compressed[15] > CHROMA_420 || state->compressed[16] != 1) {
+static int n148_decode_once(CodecState *state) {
+    n148i_image_t decoded = {0};
+    if (n148i_decode_memory(state->compressed, state->compressed_size,
+                            &decoded) != N148I_OK ||
+        decoded.width != (uint32_t) state->width ||
+        decoded.height != (uint32_t) state->height || !decoded.pixels) {
+        n148i_free_image(&decoded);
         return 0;
     }
-    uint32_t data_size = memory_read_u32(state->compressed + 17);
-    if (data_size == 0) return 0;
-#if LONG_MAX < UINT32_MAX
-    if (data_size > (uint32_t) LONG_MAX) return 0;
-#endif
-    size_t offset = N148I_HEADER_SIZE;
-    HuffSpec specs[HUFFMAN_TABLE_COUNT];
-    for (int table = 0; table < HUFFMAN_TABLE_COUNT; table++) {
-        HuffSpec *spec = &specs[table];
-        memset(spec, 0, sizeof(*spec));
-        if (offset + 16 > state->compressed_size) return 0;
-        for (int length = 1; length <= 16; length++) {
-            int count = state->compressed[offset++];
-            spec->bits[length] = count;
-            spec->value_count += count;
-            if (spec->value_count > HUFFMAN_MAX_SYMBOLS) return 0;
-        }
-        if (spec->value_count == 0 ||
-            offset + (size_t) spec->value_count > state->compressed_size)
-            return 0;
-        memcpy(spec->values, state->compressed + offset,
-               (size_t) spec->value_count);
-        offset += (size_t) spec->value_count;
-        if (!huffman_spec_is_valid(spec)) return 0;
-    }
-    if ((size_t) data_size != state->compressed_size - offset) return 0;
-    int ok = decode_image(state->compressed + offset, (long) data_size,
-                          state->width, state->height,
-                          state->compressed[14], state->compressed[15],
-                          specs, &y, &cb, &cr, &stats);
-    if (ok && stats.bytes_consumed != (long) data_size) {
-        fprintf(stderr, "N.148i consumed %ld of %zu payload bytes\n",
-                stats.bytes_consumed, (size_t) data_size);
-        ok = 0;
-    }
-    if (ok) ok = merge_channels(&y, &cb, &cr, 1, &image);
-    free_plane(&y);
-    free_plane(&cb);
-    free_plane(&cr);
-    if (!ok || image.width != state->width || image.height != state->height) {
-        free_image(&image);
-        return 0;
-    }
-    free(state->decoded);
-    state->decoded = image.pixels;
+    n148i_free_buffer(state->decoded);
+    state->decoded = decoded.pixels;
+    decoded.pixels = NULL;
     return 1;
 }
 
 static void jpeg_sampling(struct jpeg_compress_struct *jpeg, int chroma) {
-    jpeg->comp_info[0].h_samp_factor = chroma == CHROMA_444 ? 1 : 2;
-    jpeg->comp_info[0].v_samp_factor = chroma == CHROMA_420 ? 2 : 1;
+    jpeg->comp_info[0].h_samp_factor = chroma == N148I_CHROMA_444 ? 1 : 2;
+    jpeg->comp_info[0].v_samp_factor = chroma == N148I_CHROMA_420 ? 2 : 1;
     jpeg->comp_info[1].h_samp_factor = 1;
     jpeg->comp_info[1].v_samp_factor = 1;
     jpeg->comp_info[2].h_samp_factor = 1;
@@ -331,7 +264,6 @@ static int jpeg_encode_once(const Image *image, const Options *options,
     free(state->compressed);
     state->compressed = data;
     state->compressed_size = (size_t) size;
-    state->payload_size = (size_t) size;
     return 1;
 }
 
@@ -377,6 +309,7 @@ static int jpeg_decode_once(CodecState *state) {
     return 1;
 }
 
+#ifndef N148_BENCH_NO_JXL
 static int jxl_encode_once(const Image *image, const Options *options,
                            int effort, void *runner, CodecState *state) {
     JxlEncoder *encoder = JxlEncoderCreate(NULL);
@@ -440,7 +373,6 @@ static int jxl_encode_once(const Image *image, const Options *options,
     state->compressed = compressed;
     compressed = NULL;
     state->compressed_size = used;
-    state->payload_size = used;
     ok = 1;
 
 cleanup:
@@ -508,25 +440,133 @@ cleanup:
     JxlDecoderDestroy(decoder);
     return ok;
 }
+#endif
+
+typedef struct {
+    uint8_t *data;
+    size_t size;
+    size_t capacity;
+} WebPOutput;
+
+static int webp_write(const uint8_t *data, size_t data_size,
+                      const WebPPicture *picture) {
+    WebPOutput *output = (WebPOutput *) picture->custom_ptr;
+    if (!output || data_size > SIZE_MAX - output->size) return 0;
+    size_t required = output->size + data_size;
+    if (required > output->capacity) {
+        size_t capacity = output->capacity ? output->capacity : 65536u;
+        while (capacity < required) {
+            if (capacity > SIZE_MAX / 2u) {
+                capacity = required;
+                break;
+            }
+            capacity *= 2u;
+        }
+        uint8_t *grown = (uint8_t *) realloc(output->data, capacity);
+        if (!grown) return 0;
+        output->data = grown;
+        output->capacity = capacity;
+    }
+    memcpy(output->data + output->size, data, data_size);
+    output->size = required;
+    return 1;
+}
+
+static int webp_encode_once(const Image *image, const Options *options,
+                            int method, CodecState *state) {
+    WebPConfig config;
+    WebPPicture picture;
+    WebPOutput output = {0};
+    int ok = 0;
+    if (!WebPConfigInit(&config) || !WebPPictureInit(&picture)) return 0;
+    config.lossless = 0;
+    config.quality = options->webp_quality;
+    config.method = method;
+    config.thread_level = options->webp_thread_level;
+    if (!WebPValidateConfig(&config)) goto cleanup;
+
+    /* Lossy WebP's native input is YUV420. Leaving use_argb disabled makes
+       WebPPictureImportRGB perform the documented RGB-to-YUV conversion. */
+    picture.use_argb = 0;
+    picture.width = image->width;
+    picture.height = image->height;
+    picture.writer = webp_write;
+    picture.custom_ptr = &output;
+    if (!WebPPictureImportRGB(&picture, image->pixels, image->width * 3) ||
+        !WebPEncode(&config, &picture) || output.size == 0) goto cleanup;
+
+    free(state->compressed);
+    state->compressed = output.data;
+    output.data = NULL;
+    state->compressed_size = output.size;
+    ok = 1;
+
+cleanup:
+    WebPPictureFree(&picture);
+    free(output.data);
+    return ok;
+}
+
+static int webp_decode_once(CodecState *state) {
+    int width = 0;
+    int height = 0;
+    if (!WebPGetInfo(state->compressed, state->compressed_size,
+                     &width, &height) ||
+        width != state->width || height != state->height ||
+        (size_t) width > SIZE_MAX / 3u / (size_t) height) return 0;
+    size_t stride = (size_t) width * 3u;
+    size_t bytes = stride * (size_t) height;
+    uint8_t *pixels = (uint8_t *) malloc(bytes);
+    if (!pixels || !WebPDecodeRGBInto(
+            state->compressed, state->compressed_size, pixels, bytes,
+            (int) stride)) {
+        free(pixels);
+        return 0;
+    }
+    free(state->decoded);
+    state->decoded = pixels;
+    return 1;
+}
 
 static int encode_once(int codec, const Image *image, const Options *options,
                        void *jxl_runner, CodecState states[CODEC_COUNT]) {
-    if (codec == CODEC_N148)
-        return n148_encode_once(image, options, &states[codec]);
+    if (codec == CODEC_N148_CURRENT || codec == CODEC_N148_FORMAT_1)
+        return n148_encode_once(
+            image, options,
+            codec == CODEC_N148_CURRENT ? N148I_FORMAT_VERSION :
+                                          N148I_FORMAT_VERSION_1,
+            &states[codec]);
     if (codec == CODEC_JPEG)
         return jpeg_encode_once(image, options, &states[codec]);
-    return jxl_encode_once(image, options,
-                           codec == CODEC_JXL_E3 ? 3 : 7,
-                           jxl_runner, &states[codec]);
+    if (codec == CODEC_JXL_E3 || codec == CODEC_JXL_E7) {
+#ifdef N148_BENCH_NO_JXL
+        return 0;
+#else
+        return jxl_encode_once(image, options,
+                               codec == CODEC_JXL_E3 ? 3 : 7,
+                               jxl_runner, &states[codec]);
+#endif
+    }
+    return webp_encode_once(image, options,
+                            codec == CODEC_WEBP_M4 ? 4 : 6,
+                            &states[codec]);
 }
 
 static int decode_once(int codec, const Options *options, void *jxl_runner,
                        CodecState states[CODEC_COUNT]) {
-    if (codec == CODEC_N148)
-        return n148_decode_once(options, &states[codec]);
+    (void) options;
+    if (codec == CODEC_N148_CURRENT || codec == CODEC_N148_FORMAT_1)
+        return n148_decode_once(&states[codec]);
     if (codec == CODEC_JPEG)
         return jpeg_decode_once(&states[codec]);
-    return jxl_decode_once(jxl_runner, &states[codec]);
+    if (codec == CODEC_JXL_E3 || codec == CODEC_JXL_E7) {
+#ifdef N148_BENCH_NO_JXL
+        return 0;
+#else
+        return jxl_decode_once(jxl_runner, &states[codec]);
+#endif
+    }
+    return webp_decode_once(&states[codec]);
 }
 
 static int codec_affinity(int codec, const CpuAffinity *all,
@@ -581,11 +621,17 @@ static int save_reconstruction(const char *prefix, const char *codec,
 }
 
 static unsigned parse_codecs(const char *value) {
-    if (strcmp(value, "all") == 0) return (1u << CODEC_COUNT) - 1u;
-    if (strcmp(value, "n148i") == 0) return 1u << CODEC_N148;
+    if (strcmp(value, "all") == 0) return ALL_CODEC_MASK;
+    if (strcmp(value, "n148i") == 0) return 1u << CODEC_N148_CURRENT;
+    if (strcmp(value, "n148i_all") == 0)
+        return (1u << CODEC_N148_CURRENT) | (1u << CODEC_N148_FORMAT_1);
+    if (strcmp(value, "n148i_format_1") == 0)
+        return 1u << CODEC_N148_FORMAT_1;
     if (strcmp(value, "jpeg") == 0) return 1u << CODEC_JPEG;
     if (strcmp(value, "jxl_e3") == 0) return 1u << CODEC_JXL_E3;
     if (strcmp(value, "jxl_e7") == 0) return 1u << CODEC_JXL_E7;
+    if (strcmp(value, "webp_m4") == 0) return 1u << CODEC_WEBP_M4;
+    if (strcmp(value, "webp_m6") == 0) return 1u << CODEC_WEBP_M6;
     return 0;
 }
 
@@ -593,7 +639,11 @@ static void usage(const char *program) {
     fprintf(stderr,
         "usage: %s --input IMAGE.ppm [options]\n"
         "  --n148-quality N    N.148i quality, default 60\n"
+        "  --n148-chroma-quality N  chroma quality, 0 = calibrated default\n"
+        "  --n148-effort N     N.148i search effort, default 3\n"
+        "  --n148-feature-flags N  N.148i feature mask, decimal or 0x hex\n"
         "  --jpeg-quality N    JPEG quality, default 60\n"
+        "  --webp-quality X    WebP quality, default 60\n"
         "  --jxl-distance X    JPEG XL distance, default 2.5\n"
         "  --reps N            measured samples, default 15\n"
         "  --warmups N         warmup samples, default 3\n"
@@ -601,8 +651,9 @@ static void usage(const char *program) {
         "  --chroma N          N.148i/JPEG chroma 0/1/2, default 2\n"
         "  --n148-threads N    total N.148i threads, default 1\n"
         "  --jxl-threads N     JPEG XL worker threads (0 = caller), default 0\n"
+        "  --webp-thread-level N  WebP internal threading, 0 or 1\n"
         "  --jpeg-cpu N        pin JPEG to this logical CPU, default -1\n"
-        "  --codecs LIST       all or one codec name, default all\n"
+        "  --codecs LIST       all, n148i_all, or one codec name\n"
         "  --output-prefix P   write P-codec.ppm after timing\n",
         program);
 }
@@ -612,21 +663,30 @@ static int parse_options(int argc, char **argv, Options *options) {
         .input = NULL,
         .output_prefix = NULL,
         .n148_quality = 60,
+        .n148_chroma_quality = 0,
+        .n148_effort = 3,
+        .n148_feature_flags = N148I_DEFAULT_FEATURES,
         .jpeg_quality = 60,
+        .webp_quality = 60.0f,
         .jxl_distance = 2.5f,
         .reps = 15,
         .warmups = 3,
-        .chroma = CHROMA_420,
+        .chroma = N148I_CHROMA_420,
         .n148_threads = 1,
         .jxl_threads = 0,
+        .webp_thread_level = 0,
         .jpeg_cpu = -1,
         .sample_ms = 20.0,
-        .active_mask = (1u << CODEC_COUNT) - 1u,
+        .active_mask = ALL_CODEC_MASK,
     };
     static const struct option LONG_OPTIONS[] = {
         {"input", required_argument, NULL, 'i'},
         {"n148-quality", required_argument, NULL, 'n'},
+        {"n148-chroma-quality", required_argument, NULL, 'C'},
+        {"n148-effort", required_argument, NULL, 'e'},
+        {"n148-feature-flags", required_argument, NULL, 'F'},
         {"jpeg-quality", required_argument, NULL, 'q'},
+        {"webp-quality", required_argument, NULL, 'b'},
         {"jxl-distance", required_argument, NULL, 'd'},
         {"reps", required_argument, NULL, 'r'},
         {"warmups", required_argument, NULL, 'w'},
@@ -634,6 +694,7 @@ static int parse_options(int argc, char **argv, Options *options) {
         {"chroma", required_argument, NULL, 'c'},
         {"n148-threads", required_argument, NULL, 't'},
         {"jxl-threads", required_argument, NULL, 'j'},
+        {"webp-thread-level", required_argument, NULL, 'u'},
         {"jpeg-cpu", required_argument, NULL, 'p'},
         {"codecs", required_argument, NULL, 'k'},
         {"output-prefix", required_argument, NULL, 'o'},
@@ -641,12 +702,24 @@ static int parse_options(int argc, char **argv, Options *options) {
         {NULL, 0, NULL, 0},
     };
     int option;
-    while ((option = getopt_long(argc, argv, "i:n:q:d:r:w:s:c:t:j:p:k:o:h",
+    while ((option = getopt_long(argc, argv,
+                                 "i:n:C:e:F:q:b:d:r:w:s:c:t:j:u:p:k:o:h",
                                  LONG_OPTIONS, NULL)) != -1) {
         switch (option) {
             case 'i': options->input = optarg; break;
             case 'n': options->n148_quality = atoi(optarg); break;
+            case 'C': options->n148_chroma_quality = atoi(optarg); break;
+            case 'e': options->n148_effort = atoi(optarg); break;
+            case 'F': {
+                char *end = NULL;
+                errno = 0;
+                unsigned long value = strtoul(optarg, &end, 0);
+                if (errno || !end || *end || value > UINT32_MAX) return -1;
+                options->n148_feature_flags = (uint32_t) value;
+                break;
+            }
             case 'q': options->jpeg_quality = atoi(optarg); break;
+            case 'b': options->webp_quality = strtof(optarg, NULL); break;
             case 'd': options->jxl_distance = strtof(optarg, NULL); break;
             case 'r': options->reps = atoi(optarg); break;
             case 'w': options->warmups = atoi(optarg); break;
@@ -654,6 +727,7 @@ static int parse_options(int argc, char **argv, Options *options) {
             case 'c': options->chroma = atoi(optarg); break;
             case 't': options->n148_threads = atoi(optarg); break;
             case 'j': options->jxl_threads = atoi(optarg); break;
+            case 'u': options->webp_thread_level = atoi(optarg); break;
             case 'p': options->jpeg_cpu = atoi(optarg); break;
             case 'k': options->active_mask = parse_codecs(optarg); break;
             case 'o': options->output_prefix = optarg; break;
@@ -663,12 +737,17 @@ static int parse_options(int argc, char **argv, Options *options) {
     }
     if (!options->input || options->active_mask == 0 ||
         options->n148_quality < 1 || options->n148_quality > 100 ||
+        options->n148_chroma_quality < 0 ||
+        options->n148_chroma_quality > 100 ||
+        options->n148_effort < 0 || options->n148_effort > 9 ||
         options->jpeg_quality < 1 || options->jpeg_quality > 100 ||
+        !(options->webp_quality >= 0.0f) || options->webp_quality > 100.0f ||
         !(options->jxl_distance > 0.0f) || options->jxl_distance > 25.0f ||
         options->reps < 1 || options->warmups < 0 ||
         !(options->sample_ms > 0.0) || options->chroma < 0 ||
         options->chroma > 2 || options->n148_threads < 1 ||
         options->n148_threads > 32 || options->jxl_threads < 0 ||
+        options->webp_thread_level < 0 || options->webp_thread_level > 1 ||
         options->jpeg_cpu < -1) {
         usage(argv[0]);
         return -1;
@@ -704,14 +783,18 @@ int main(int argc, char **argv) {
                 strerror(errno));
         goto cleanup;
     }
-    n148_set_thread_count(options.n148_threads);
     if (options.active_mask & ((1u << CODEC_JXL_E3) | (1u << CODEC_JXL_E7))) {
+#ifdef N148_BENCH_NO_JXL
+        fprintf(stderr, "JPEG XL is unavailable in this benchmark build\n");
+        goto cleanup;
+#else
         jxl_runner = JxlThreadParallelRunnerCreate(NULL,
                                                    (size_t) options.jxl_threads);
         if (!jxl_runner) {
             fprintf(stderr, "could not create JPEG XL thread runner\n");
             goto cleanup;
         }
+#endif
     }
     for (int codec = 0; codec < CODEC_COUNT; codec++) {
         if (options.active_mask & (1u << codec)) active[active_count++] = codec;
@@ -745,7 +828,11 @@ int main(int argc, char **argv) {
            original.width, original.height, options.n148_quality,
            options.jpeg_quality, options.jxl_distance, options.reps,
            options.warmups, options.chroma, options.n148_threads,
+#ifdef N148_BENCH_NO_JXL
+           0u, options.jxl_threads);
+#else
            (unsigned) JxlEncoderVersion(), options.jxl_threads);
+#endif
     for (int index = 0; index < active_count; index++) {
         int codec = active[index];
         printf("calibration,%s,%d,%d\n", CODEC_NAMES[codec],
@@ -805,8 +892,11 @@ int main(int argc, char **argv) {
 
 cleanup:
     if (affinity_captured) apply_affinity(&all_affinity);
-    for (int codec = 0; codec < CODEC_COUNT; codec++) free_state(&states[codec]);
+    for (int codec = 0; codec < CODEC_COUNT; codec++)
+        free_state(codec, &states[codec]);
+#ifndef N148_BENCH_NO_JXL
     JxlThreadParallelRunnerDestroy(jxl_runner);
+#endif
     free_image(&original);
     return result;
 }

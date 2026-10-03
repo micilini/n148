@@ -3,14 +3,14 @@
 # Copyright (c) 2026 Micilini Roll. Licensed under the MIT License.
 #
 # CMake is the portable distribution build. This Makefile preserves the
-# original development targets and now links each executable against the
+# command-line and benchmark targets and links each executable against the
 # static N.148i library instead of compiling the codec sources into every tool.
 
 CC       ?= cc
 AR       ?= ar
 RANLIB   ?= ranlib
 CPPFLAGS ?=
-CFLAGS   ?= -O2 -Wall -Wextra -Wno-unused-parameter
+CFLAGS   ?= -O3 -Wall -Wextra -Wno-unused-parameter
 LDFLAGS  ?=
 LDLIBS   := -lm
 
@@ -32,6 +32,10 @@ JXL_CHECK = test -f "$(JXL_PREFIX)/include/jxl/encode.h" -a \
                  -f "$(JXL_PREFIX)/lib/libjxl_threads.so"
 endif
 
+WEBP_CFLAGS ?= $(shell pkg-config --cflags libwebp 2>/dev/null)
+WEBP_LIBS ?= $(shell pkg-config --libs libwebp 2>/dev/null)
+WEBP_CHECK = pkg-config --exists libwebp
+
 BUILD_KIND := release
 ifdef DEBUG
 CFLAGS := -O0 -g -Wall -Wextra -Wno-unused-parameter
@@ -51,13 +55,20 @@ BUILDDIR := .build/make/$(BUILD_KIND)
 CORE_SOURCES := $(SRCDIR)/n148i.c $(SRCDIR)/header.c $(SRCDIR)/ppm.c \
                 $(SRCDIR)/tables.c $(SRCDIR)/dct.c $(SRCDIR)/cpu.c \
                 $(SRCDIR)/parallel.c $(SRCDIR)/huffman.c \
+                $(SRCDIR)/rans.c $(SRCDIR)/intra.c $(SRCDIR)/perceptual.c \
+                $(SRCDIR)/adaptive_quant.c $(SRCDIR)/segmentation.c \
+                $(SRCDIR)/variable_transform.c $(SRCDIR)/rdo.c \
+                $(SRCDIR)/loop_filter.c \
+                $(SRCDIR)/entropy_payload.c $(SRCDIR)/directional_intra.c \
+                $(SRCDIR)/chroma_profile.c $(SRCDIR)/luma_profile.c \
+                $(SRCDIR)/fidelity_profile.c $(SRCDIR)/entropy_profile.c \
                 $(SRCDIR)/encoder.c $(SRCDIR)/decoder.c
 CORE_OBJECTS := $(patsubst $(SRCDIR)/%.c,$(BUILDDIR)/%.o,$(CORE_SOURCES))
 CORE_DEPS    := $(CORE_OBJECTS:.o=.d)
 
 STATIC_LIBRARY := libn148i.a
-SHARED_REAL    := libn148i.so.1.0.0
-SHARED_SONAME  := libn148i.so.1
+SHARED_REAL    := libn148i.so.2.0.0
+SHARED_SONAME  := libn148i.so.2
 SHARED_LIBRARY := libn148i.so
 
 all: n148i
@@ -98,9 +109,20 @@ compare: $(SRCDIR)/compare_cli.c $(STATIC_LIBRARY)
 benchmark-final: $(SRCDIR)/benchmark_final_cli.c $(STATIC_LIBRARY)
 	@$(JXL_CHECK) || \
 	  (echo "libjxl >= 0.8 development files not found via pkg-config or JXL_PREFIX=$(JXL_PREFIX)" >&2; exit 1)
-	$(CC) $(CPPFLAGS) $(CFLAGS) $(JXL_CFLAGS) -DN148I_STATIC_DEFINE $< \
+	@$(WEBP_CHECK) || \
+	  (echo "libwebp development files not found via pkg-config" >&2; exit 1)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(JXL_CFLAGS) $(WEBP_CFLAGS) \
+		-DN148I_STATIC_DEFINE $< \
 		$(STATIC_LIBRARY) -o $@ $(LDFLAGS) $(LDLIBS) \
-		-ljpeg $(JXL_LIBS) $(JXL_LINK_FLAGS)
+		-ljpeg $(JXL_LIBS) $(WEBP_LIBS) $(JXL_LINK_FLAGS)
+
+benchmark-final-nojxl: $(SRCDIR)/benchmark_final_cli.c $(STATIC_LIBRARY)
+	@$(WEBP_CHECK) || \
+	  (echo "libwebp development files not found via pkg-config" >&2; exit 1)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(WEBP_CFLAGS) \
+		-DN148I_STATIC_DEFINE -DN148_BENCH_NO_JXL $< \
+		$(STATIC_LIBRARY) -o $@ $(LDFLAGS) $(LDLIBS) \
+		-ljpeg $(WEBP_LIBS)
 
 validate: $(SRCDIR)/validate_cli.c $(STATIC_LIBRARY)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -DN148I_STATIC_DEFINE $< \
@@ -111,10 +133,10 @@ run: n148i
 
 clean:
 	rm -rf .build/make
-	rm -f n148i bench compare validate benchmark-final \
+	rm -f n148i bench compare validate benchmark-final benchmark-final-nojxl \
 		$(STATIC_LIBRARY) $(SHARED_LIBRARY) $(SHARED_SONAME) $(SHARED_REAL) \
 		$(SRCDIR)/n148i $(SRCDIR)/n148i.exe $(SRCDIR)/bench
 
 -include $(CORE_DEPS)
 
-.PHONY: all libraries run clean bench compare benchmark-final validate
+.PHONY: all libraries run clean bench compare benchmark-final benchmark-final-nojxl validate

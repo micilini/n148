@@ -26,12 +26,23 @@ void idct_block(double coef[8][8], double block[8][8]);
 void dct_block_fast(const float block[64], float coef[64]);
 void idct_block_fast(const float coef[64], float block[64]);
 
+/* Intra prediction feeds reconstructed pixels into later blocks. Keep this
+   scalar entry point for CPUs without AVX2 and for parity checks against the
+   vector reconstruction path. */
+void n148_idct_block_scalar(const float coef[64], float block[64]);
+
 // Direct entry points for callers that already performed CPU dispatch.
 #if defined(__x86_64__) || defined(__i386__)
 void dct_block_avx2(const float block[64], float coef[64]);
 void idct_block_avx2(const float coef[64], float block[64]);
 void idct_block_store_avx2(const float coef[64], unsigned char *dst,
                            int stride);
+void idct_block_add_prediction_avx2(const float coef[64],
+                                     const unsigned char prediction[64],
+                                     unsigned char *dst, int stride);
+void idct_block_add_prediction_dc_avx2(float dc,
+                                        const unsigned char prediction[64],
+                                        unsigned char *dst, int stride);
 void idct_block_store_single_avx2(float dc, float ac, int index,
                                   unsigned char *dst, int stride);
 void idct_block_store_two_avx2(float dc,

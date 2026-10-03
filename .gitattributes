@@ -1,3 +1,5 @@
+# Keep measured source hashes stable on Linux, Windows and macOS checkouts.
+* text=auto eol=lf
 *.n148i binary
 *.pgm binary
 *.ppm binary
@@ -6,3 +8,8 @@
 *.json text eol=lf
 *.md text eol=lf
 *.svg text eol=lf
+
+# Preserve published tool output and its checksums across checkouts.
+benchmarks/release/*.csv -text
+benchmarks/release/library-validation/validation.log -text whitespace=-blank-at-eof
+benchmarks/release/rate-distortion.svg whitespace=-blank-at-eol

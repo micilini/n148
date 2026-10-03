@@ -177,7 +177,7 @@ static void dct_scalar(const float block[64], float coef[64]) {
     memcpy(coef, t, sizeof(t));
 }
 
-static void idct_scalar(const float coef[64], float block[64]) {
+void n148_idct_block_scalar(const float coef[64], float block[64]) {
     float t[64];
     memcpy(t, coef, sizeof(t));
     for (int c = 0; c < 8; c++) idct_pass(&t[c],   8);
@@ -344,6 +344,52 @@ void idct_block_store_avx2(const float coef[64], unsigned char *dst,
     store_idct_row_avx2(r7, dst + (long)stride * 7, shift, round);
 }
 
+__attribute__((target("avx2"), always_inline))
+static inline void store_predicted_idct_row_avx2(
+    __m256 residual, const unsigned char *prediction, unsigned char *dst) {
+    __m128i bytes = _mm_loadl_epi64((const __m128i *) prediction);
+    __m256 predictor = _mm256_cvtepi32_ps(_mm256_cvtepu8_epi32(bytes));
+    const __m256 shift = _mm256_set1_ps(128.0f);
+    const __m256 zero = _mm256_setzero_ps();
+    const __m256 maximum = _mm256_set1_ps(255.0f);
+    const __m256 half = _mm256_set1_ps(0.5f);
+    __m256 value = _mm256_add_ps(predictor,
+                                  _mm256_add_ps(residual, shift));
+    value = _mm256_sub_ps(value, shift);
+    value = _mm256_min_ps(_mm256_max_ps(value, zero), maximum);
+    __m256i rounded = _mm256_cvttps_epi32(_mm256_add_ps(value, half));
+    __m128i words = _mm_packs_epi32(_mm256_castsi256_si128(rounded),
+                                    _mm256_extracti128_si256(rounded, 1));
+    _mm_storel_epi64((__m128i *) dst, _mm_packus_epi16(words, words));
+}
+
+__attribute__((target("avx2")))
+void idct_block_add_prediction_dc_avx2(float dc,
+                                        const unsigned char prediction[64],
+                                        unsigned char *dst, int stride) {
+    const __m256 level = _mm256_set1_ps(dc);
+    for (int row = 0; row < 8; row++)
+        store_predicted_idct_row_avx2(
+            level, prediction + row * 8, dst + (long)stride * row);
+}
+
+__attribute__((target("avx2")))
+void idct_block_add_prediction_avx2(const float coef[64],
+                                     const unsigned char prediction[64],
+                                     unsigned char *dst, int stride) {
+    __m256 r0,r1,r2,r3,r4,r5,r6,r7;
+    idct_vectors_avx2(coef, &r0, &r1, &r2, &r3,
+                      &r4, &r5, &r6, &r7);
+    store_predicted_idct_row_avx2(r0, prediction + 0, dst + (long)stride * 0);
+    store_predicted_idct_row_avx2(r1, prediction + 8, dst + (long)stride * 1);
+    store_predicted_idct_row_avx2(r2, prediction + 16, dst + (long)stride * 2);
+    store_predicted_idct_row_avx2(r3, prediction + 24, dst + (long)stride * 3);
+    store_predicted_idct_row_avx2(r4, prediction + 32, dst + (long)stride * 4);
+    store_predicted_idct_row_avx2(r5, prediction + 40, dst + (long)stride * 5);
+    store_predicted_idct_row_avx2(r6, prediction + 48, dst + (long)stride * 6);
+    store_predicted_idct_row_avx2(r7, prediction + 56, dst + (long)stride * 7);
+}
+
 /* A separable inverse transform reconstructs a sparse block as the DC level
    plus one outer product per AC coefficient.  These are the exact one-pass
    AAN responses used by the full transform, kept as eight tiny basis rows. */
@@ -454,5 +500,5 @@ void idct_block_fast(const float coef[64], float block[64]) {
         return;
     }
 #endif
-    idct_scalar(coef, block);
+    n148_idct_block_scalar(coef, block);
 }
