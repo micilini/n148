@@ -1764,7 +1764,7 @@ static int encode_rans(Plane *y, Plane *cb, Plane *cr, int quality,
                        N148EncodedPayload *output) {
     N148CoeffPlane coefficients[3] = {{0}};
     TokenStream tokens;
-    N148RansModel models[MAX_MODEL_COUNT];
+    N148RansModel *models = NULL;
     N148AdaptiveMap adaptive_map = {0};
     N148TransformMap transform_map = {0};
     uint8_t *rans_stream = NULL;
@@ -1800,6 +1800,9 @@ static int encode_rans(Plane *y, Plane *cb, Plane *cr, int quality,
     int cb_blocks_x = cb->width / 8 + (cb->width % 8 != 0);
     int cr_blocks_x = cr->width / 8 + (cr->width % 8 != 0);
 
+    /* The model bank alone exceeds the default 1 MiB Windows stack. */
+    models = (N148RansModel *) malloc(MAX_MODEL_COUNT * sizeof(*models));
+    if (!models) goto cleanup;
     if (use_adaptive && !n148_adaptive_map_build(y, &adaptive_map))
         goto cleanup;
     if (use_transform &&
@@ -1898,6 +1901,7 @@ cleanup:
     if (!success) n148_encoded_payload_release(output);
     writer_release(&metadata);
     writer_release(&payload);
+    free(models);
     free(rans_stream);
     free(prediction_modes);
     n148_adaptive_map_release(&adaptive_map);
@@ -2025,7 +2029,7 @@ int n148_predictive_encode_cached(Plane *y, Plane *cb, Plane *cr, int quality,
                                   N148PredictivePreparation *prepared) {
     N148CoeffPlane coefficients[3] = {{0}};
     TokenStream tokens;
-    N148RansModel models[MAX_MODEL_COUNT];
+    N148RansModel *models = NULL;
     N148PartitionMap partition_map = {0};
     N148SegmentationMap segmentation_map = {0};
     N148TransformMap transform_map = {0};
@@ -2098,6 +2102,8 @@ int n148_predictive_encode_cached(Plane *y, Plane *cb, Plane *cr, int quality,
         (quant_adaptive_filter && (!use_loop_filter || !calibrated_luma)) ||
         (variable_luma && (!use_contextual_rdo || !use_split)) ||
         (adaptive_filter && !segmented)) goto cleanup;
+    models = (N148RansModel *) malloc(MAX_MODEL_COUNT * sizeof(*models));
+    if (!models) goto cleanup;
     if (prepared && prepared->valid) {
         memcpy(coefficients, prepared->coefficients, sizeof(coefficients));
         partition_map = prepared->partition_map;
@@ -2364,6 +2370,7 @@ cleanup:
     if (!success) n148_encoded_payload_release(output);
     writer_release(&metadata);
     writer_release(&payload);
+    free(models);
     free(rans_stream);
     if (!prepared || !prepared->valid) {
         free(prediction_modes);
@@ -3865,12 +3872,14 @@ int n148_decode_format_2_coefficients(const uint8_t *metadata, size_t metadata_s
         (use_intra ? BLOCK_INTRA_MODELS : 0) +
         (use_adaptive ? ADAPTIVE_MAP_MODEL_COUNT : 0) +
         (use_transform ? TRANSFORM_MAP_MODEL_COUNT : 0);
-    N148RansModel models[MAX_MODEL_COUNT];
+    N148RansModel *models = (N148RansModel *) malloc(
+        MAX_MODEL_COUNT * sizeof(*models));
+    if (!models) return 0;
     size_t metadata_consumed = 0;
     if (!parse_rans_models(metadata, metadata_size, models, model_count,
                            &metadata_consumed) ||
         metadata_consumed != metadata_size)
-        return 0;
+        goto failure;
 
     int chroma_width, chroma_height;
     chroma_dimensions(chroma, width, height, &chroma_width, &chroma_height);
@@ -4000,10 +4009,12 @@ int n148_decode_format_2_coefficients(const uint8_t *metadata, size_t metadata_s
     }
     n148_adaptive_map_release(&decoded_adaptive);
     n148_transform_map_release(&decoded_transform);
+    free(models);
     free(decoded_modes);
     return 1;
 
 failure:
+    free(models);
     free(decoded_modes);
     n148_adaptive_map_release(&decoded_adaptive);
     n148_transform_map_release(&decoded_transform);
@@ -4073,7 +4084,9 @@ static int decode_modern_coefficients(
         (use_split ? PARTITION_MODEL_COUNT : 0) +
         (segmented ? SEGMENTATION_MODEL_COUNT : 0) +
         (variable_luma ? LUMA_TRANSFORM_MODEL_COUNT : 0);
-    N148RansModel models[MAX_MODEL_COUNT];
+    N148RansModel *models = (N148RansModel *) malloc(
+        MAX_MODEL_COUNT * sizeof(*models));
+    if (!models) return 0;
     uint8_t adaptive_mask[RICH_ADAPTIVE_MASK_SIZE] = {0};
     size_t metadata_consumed = 0;
     if (!(rich_context ? parse_rich_models(
@@ -4082,7 +4095,7 @@ static int decode_modern_coefficients(
               &metadata_consumed) :
           parse_rans_models(metadata, metadata_size, models, model_count,
                             &metadata_consumed)) ||
-        metadata_consumed != metadata_size) return 0;
+        metadata_consumed != metadata_size) goto failure;
 
     int chroma_width, chroma_height;
     chroma_dimensions(chroma, width, height, &chroma_width, &chroma_height);
@@ -4340,9 +4353,11 @@ static int decode_modern_coefficients(
         *transform_map = decoded_transform;
         memset(&decoded_transform, 0, sizeof(decoded_transform));
     }
+    free(models);
     return 1;
 
 failure:
+    free(models);
     free(decoded_modes);
     n148_partition_map_release(&decoded_partition);
     n148_segmentation_map_release(&decoded_segmentation);

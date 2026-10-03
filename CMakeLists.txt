@@ -136,6 +136,15 @@ if(N148I_BUILD_EXAMPLE)
                     $<TARGET_FILE:n148i_shared>
                     $<TARGET_FILE_DIR:n148i_shared_roundtrip>)
         endif()
+        if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+            # Exercise the default MSVC stack limit for both library variants.
+            foreach(linkage IN ITEMS memory shared)
+                add_test(NAME n148i.${linkage}_roundtrip_small_stack
+                    COMMAND /bin/sh -c
+                        "ulimit -c 0 && ulimit -s 1024 && exec \"$0\""
+                        $<TARGET_FILE:n148i_${linkage}_roundtrip>)
+            endforeach()
+        endif()
     endif()
 endif()
 
